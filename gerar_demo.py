@@ -9,7 +9,7 @@ Saída:
     demo.html  (abre direto no dashboard, sem login, com banner de demo)
 """
 
-import json, os
+import json, os, base64
 from collections import defaultdict
 
 SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
@@ -379,9 +379,6 @@ def build_director(todos):
 
 DEMO_CSS = """
 <style id="demo-style">
-/* Esconde logo/branding da tela de login */
-#login .brand { display: none !important; }
-
 /* Picker de vendedores */
 #demo-vend-picker { display: none; width: 100%; }
 #demo-vend-picker .dvp-title {
@@ -434,6 +431,12 @@ function hidePicker() {
 }
 
 function injectVendPicker() {
+  /* Substitui logo original pelo logo Mediton */
+  var brand = document.querySelector('#login .brand');
+  if (brand) {
+    brand.innerHTML = '<img src="LOGO_DATA_URI" style="max-width:200px;max-height:110px;object-fit:contain;display:block;margin:0 auto">';
+  }
+
   var login  = document.getElementById('login');
   var picker = document.createElement('div');
   picker.id = 'demo-vend-picker';
@@ -788,7 +791,19 @@ def main():
         "<title>Agente Fábrica</title>",
         "<title>InfoVendas Demo — Mediton</title>")
     html = html.replace("</head>", DEMO_CSS + "</head>")
-    html = html.replace("</body>", DEMO_JS + "</body>")
+
+    logo_path = os.path.join(SCRIPT_DIR, "logo mediton.jpeg")
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            logo_b64 = base64.b64encode(f.read()).decode("ascii")
+        logo_uri = f"data:image/jpeg;base64,{logo_b64}"
+        print("🖼️  Logo Mediton embutido.")
+    else:
+        logo_uri = ""
+        print("⚠️  Logo não encontrado, tela de login sem imagem.")
+    demo_js = DEMO_JS.replace("LOGO_DATA_URI", logo_uri)
+
+    html = html.replace("</body>", demo_js + "</body>")
 
     print("💾 Salvando demo.html...")
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
