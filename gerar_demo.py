@@ -404,67 +404,312 @@ DEMO_CSS = """
 DEMO_JS = """
 <script id="demo-script">
 (function() {
-  var VENDORS = [
-    { code: "001", name: "Anderson Silva",  region: "SP Capital / Guarulhos" },
-    { code: "002", name: "Camila Ferreira", region: "Interior SP"            },
-    { code: "003", name: "Rodrigo Costa",   region: "ABC / Santos"           },
-    { code: "004", name: "Tatiana Alves",   region: "BH / Rio de Janeiro"    }
-  ];
 
-  function showPicker() {
-    document.getElementById('mode-sel').style.display        = 'none';
-    document.getElementById('form-dir').style.display        = 'none';
-    document.getElementById('form-vend').style.display       = 'none';
-    document.getElementById('demo-vend-picker').style.display = 'block';
-  }
+/* ═══════════════════════════════════════════════════
+   DADOS DOS VENDEDORES (picker de login)
+════════════════════════════════════════════════════ */
+var VENDORS = [
+  { code: "001", name: "Anderson Silva",  region: "SP Capital / Guarulhos" },
+  { code: "002", name: "Camila Ferreira", region: "Interior SP"            },
+  { code: "003", name: "Rodrigo Costa",   region: "ABC / Santos"           },
+  { code: "004", name: "Tatiana Alves",   region: "BH / Rio de Janeiro"    }
+];
 
-  function hidePicker() {
-    document.getElementById('mode-sel').style.display        = 'flex';
-    document.getElementById('demo-vend-picker').style.display = 'none';
-  }
+/* ═══════════════════════════════════════════════════
+   LOGIN — sem senha
+════════════════════════════════════════════════════ */
+function showPicker() {
+  document.getElementById('mode-sel').style.display         = 'none';
+  document.getElementById('form-dir').style.display         = 'none';
+  document.getElementById('form-vend').style.display        = 'none';
+  document.getElementById('demo-vend-picker').style.display = 'block';
+}
+function hidePicker() {
+  document.getElementById('mode-sel').style.display         = 'flex';
+  document.getElementById('demo-vend-picker').style.display = 'none';
+}
 
-  function injectVendPicker() {
-    var login  = document.getElementById('login');
-    var picker = document.createElement('div');
-    picker.id = 'demo-vend-picker';
-    picker.style.cssText = 'display:none;width:100%';
+function injectVendPicker() {
+  var login  = document.getElementById('login');
+  var picker = document.createElement('div');
+  picker.id = 'demo-vend-picker';
+  picker.style.cssText = 'display:none;width:100%';
 
-    var title = document.createElement('div');
-    title.className   = 'dvp-title';
-    title.textContent = 'Selecione o Representante';
-    picker.appendChild(title);
+  var title = document.createElement('div');
+  title.className   = 'dvp-title';
+  title.textContent = 'Selecione o Representante';
+  picker.appendChild(title);
 
-    VENDORS.forEach(function(v) {
-      var btn = document.createElement('button');
-      btn.className = 'btn-vend';
-      var span = document.createElement('span');
-      span.textContent = v.region;
-      btn.textContent  = v.name;
-      btn.appendChild(span);
-      btn.onclick = (function(code) {
-        return function() { bootData(VENDORS_DATA[code]); };
-      })(v.code);
-      picker.appendChild(btn);
-    });
-
-    var back = document.createElement('button');
-    back.className  = 'btn-ghost';
-    back.style.cssText = 'margin-top:4px;width:100%;padding:12px';
-    back.textContent   = '← Voltar';
-    back.onclick = hidePicker;
-    picker.appendChild(back);
-
-    login.appendChild(picker);
-
-    /* Substituir handlers dos botões originais */
-    var btns = document.querySelectorAll('#mode-sel button');
-    if (btns[0]) btns[0].onclick = function() { bootDir('demo'); };
-    if (btns[1]) btns[1].onclick = showPicker;
-  }
-
-  window.addEventListener('DOMContentLoaded', function() {
-    injectVendPicker();
+  VENDORS.forEach(function(v) {
+    var btn = document.createElement('button');
+    btn.className = 'btn-vend';
+    var span = document.createElement('span');
+    span.textContent = v.region;
+    btn.textContent  = v.name;
+    btn.appendChild(span);
+    btn.onclick = (function(code) {
+      return function() { bootData(VENDORS_DATA[code]); };
+    })(v.code);
+    picker.appendChild(btn);
   });
+
+  var back = document.createElement('button');
+  back.className     = 'btn-ghost';
+  back.style.cssText = 'margin-top:4px;width:100%;padding:12px';
+  back.textContent   = '← Voltar';
+  back.onclick = hidePicker;
+  picker.appendChild(back);
+
+  login.appendChild(picker);
+
+  var btns = document.querySelectorAll('#mode-sel button');
+  if (btns[0]) btns[0].onclick = function() { bootDir('demo'); };
+  if (btns[1]) btns[1].onclick = showPicker;
+}
+
+/* ═══════════════════════════════════════════════════
+   ABA AÇÕES — injeção de estrutura
+════════════════════════════════════════════════════ */
+function injectAcoesTab() {
+  /* Adiciona 'acoes' ao array de tabs existente */
+  if (typeof TABS !== 'undefined' && TABS.indexOf('acoes') === -1) {
+    TABS.push('acoes');
+  }
+
+  /* Div de conteúdo (inserida antes do <nav class="bnav">) */
+  var bnav = document.querySelector('#app nav.bnav');
+  if (!bnav) return;
+  var tabDiv = document.createElement('div');
+  tabDiv.id             = 't-acoes';
+  tabDiv.className      = 'content';
+  tabDiv.style.display  = 'none';
+  bnav.parentNode.insertBefore(tabDiv, bnav);
+
+  /* Botão na nav */
+  var btn = document.createElement('button');
+  btn.className = 'nb';
+  btn.id        = 'nb-acoes';
+  btn.innerHTML = '<span class="ni">&#127919;</span>Ações';
+  btn.onclick   = function() { goTab('acoes', btn); renderAcoes(); };
+  bnav.appendChild(btn);
+}
+
+/* ═══════════════════════════════════════════════════
+   ABA AÇÕES — renderização
+════════════════════════════════════════════════════ */
+var MG_IDEAL    = 22;
+var MG_CRITICA  = 19;
+
+window.renderAcoes = function() {
+  var el = document.getElementById('t-acoes');
+  if (!el || !D) return;
+
+  var cur      = D.m26.find(function(m){ return m.month === D.curMonth; }) || D.m26[D.m26.length-1] || {};
+  var meta     = cur.meta   || 0;
+  var fat      = cur.fat    || 0;
+  var mgMes    = cur.mg     || 0;
+  var proj     = cur.proj   || fat;
+  var dEl      = D.daysEl   || 1;
+  var dTot     = D.daysTotal|| 30;
+  var dLeft    = dTot - dEl;
+  var mdAtual  = dEl   > 0 ? fat / dEl : 0;
+  var mdNec    = dLeft > 0 ? Math.max(meta - fat, 0) / dLeft : 0;
+  var faltaMeta = Math.max(meta - proj, 0);
+  var excedeMeta = Math.max(proj - meta, 0);
+
+  /* Acumulado */
+  var totFat  = D.m26.reduce(function(s,m){ return s+m.fat;  },0);
+  var totMeta = D.m26.reduce(function(s,m){ return s+m.meta; },0);
+  var atingAc = totMeta > 0 ? totFat/totMeta*100 : 0;
+
+  /* Clientes sem compra no mês (mas compraram no anterior) */
+  var semCompra = D.clients.filter(function(c){ return c.curFat===0 && c.prevFat>0; })
+                           .sort(function(a,b){ return b.prevFat - a.prevFat; });
+
+  /* Clientes em queda (projeção < 85% do mês anterior) */
+  var emQueda = D.clients.filter(function(c){ return c.curFat>0 && c.proj < c.prevFat*0.85; })
+                         .sort(function(a,b){ return (a.proj/a.prevFat)-(b.proj/b.prevFat); });
+
+  /* Clientes crescendo (projeção >= 105% do anterior) */
+  var nCrescendo = D.clients.filter(function(c){ return c.curFat>0 && c.proj >= c.prevFat*1.05; }).length;
+
+  /* Categorias com margem baixa / boa */
+  var catsBaixas = D.cats.filter(function(c){ return c.mg < MG_IDEAL; })
+                         .sort(function(a,b){ return a.mg - b.mg; });
+  var catsBoas   = D.cats.filter(function(c){ return c.mg >= MG_IDEAL; })
+                         .sort(function(a,b){ return b.mg - a.mg; });
+
+  var clsMeta = proj>=meta?'g':proj>=meta*0.85?'y':'r';
+  var clsMg   = mgMes>=MG_IDEAL?'g':mgMes>=MG_CRITICA?'y':'r';
+
+  var html = '';
+
+  /* ── 1. Situação atual ──────────────────────────────────────────────── */
+  html += '<div class="card">';
+  html += '<div class="ctitle">&#127919; Situação Atual &mdash; '+D.curMonth+'/2026</div>';
+  html += row('Faturamento (dia '+dEl+')', '<span style="color:var(--primary);font-weight:700">'+ff(fat)+'</span>');
+  html += row('Projeção do mês', '<span class="badge '+clsMeta+'">'+ff(proj)+'</span>');
+  html += row('Meta do mês', ff(meta));
+  if (faltaMeta > 0) {
+    html += row('<span style="color:var(--danger)">Falta para a meta</span>',
+                '<span style="color:var(--danger);font-weight:700">'+ff(faltaMeta)+'</span>');
+    if (dLeft > 0) {
+      html += row('Média/dia necessária', '<span style="color:var(--warn);font-weight:700">'+fk(mdNec)+'/dia</span>');
+      html += row('Dias restantes no mês', '<strong>'+dLeft+' dias</strong>');
+    }
+  } else {
+    html += row('<span style="color:var(--primary)">Meta superada por</span>',
+                '<span style="color:var(--primary);font-weight:700">+'+ff(excedeMeta)+'</span>');
+  }
+  html += row('Margem do mês', '<span class="badge '+clsMg+'">'+mgMes.toFixed(1)+'%</span>');
+  html += row('Atingimento acumulado 2026', '<span class="badge '+pcls(atingAc)+'">'+atingAc.toFixed(1)+'%</span>');
+  html += '</div>';
+
+  /* ── 2. Alertas ─────────────────────────────────────────────────────── */
+  var temAlert = semCompra.length || emQueda.length || catsBaixas.length || mgMes < MG_IDEAL;
+  if (temAlert) {
+    html += '<div class="card da">';
+    html += '<div class="ctitle">&#128308; Alertas</div>';
+
+    if (mgMes < MG_IDEAL) {
+      html += bloco('danger',
+        'Margem abaixo do ideal',
+        'Margem atual <strong style="color:var(--danger)">'+mgMes.toFixed(1)+'%</strong> &mdash; meta mínima: <strong>'+MG_IDEAL+'%</strong>. Priorize produtos de maior margem para compensar.');
+    }
+
+    if (semCompra.length) {
+      html += '<div style="margin-bottom:14px">';
+      html += '<div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:8px">'+
+              '&#128683; '+semCompra.length+' cliente(s) sem compra em '+D.curMonth+'</div>';
+      semCompra.slice(0,6).forEach(function(c){
+        html += itemLinha(c.name, 'Abr: <strong style="color:var(--warn)">'+fk(c.prevFat)+'</strong>');
+      });
+      if (semCompra.length>6) html+='<div style="font-size:10px;color:var(--muted);margin-top:4px">+ '+(semCompra.length-6)+' outros</div>';
+      html += '</div>';
+    }
+
+    if (emQueda.length) {
+      html += '<div style="margin-bottom:14px">';
+      html += '<div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:8px">'+
+              '&#128071; '+emQueda.length+' cliente(s) com queda na projeção</div>';
+      emQueda.slice(0,4).forEach(function(c){
+        var pct = ((c.proj-c.prevFat)/c.prevFat*100).toFixed(0);
+        html += itemLinha(c.name, '<span style="color:var(--warn);font-weight:700">'+pct+'%</span>');
+      });
+      html += '</div>';
+    }
+
+    if (catsBaixas.length) {
+      html += '<div style="margin-bottom:4px">';
+      html += '<div style="font-size:12px;font-weight:700;color:var(--warn);margin-bottom:8px">'+
+              '&#9888; Categorias com margem abaixo de '+MG_IDEAL+'%</div>';
+      catsBaixas.forEach(function(c){
+        var cls = c.mg<MG_CRITICA?'r':'y';
+        html += itemLinha(c.name, '<span class="badge '+cls+'">'+c.mg.toFixed(1)+'%</span>');
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  /* ── 3. Pontos positivos ────────────────────────────────────────────── */
+  var positivos = [];
+  if (atingAc >= 90) positivos.push('Atingimento acumulado <strong>'+atingAc.toFixed(1)+'%</strong> &mdash; bom ritmo!');
+  if (mgMes >= MG_IDEAL) positivos.push('Margem <strong>'+mgMes.toFixed(1)+'%</strong> acima do ideal de '+MG_IDEAL+'%');
+  if (nCrescendo > 0) positivos.push('<strong>'+nCrescendo+'</strong> cliente(s) crescendo vs mês anterior');
+  if (proj >= meta) positivos.push('Projeção <strong>'+ff(proj)+'</strong> supera a meta do mês!');
+  catsBoas.slice(0,2).forEach(function(c){
+    positivos.push(c.name+' com margem de <strong>'+c.mg.toFixed(1)+'%</strong>');
+  });
+
+  if (positivos.length) {
+    html += '<div class="card hi">';
+    html += '<div class="ctitle">&#9989; Pontos Positivos</div>';
+    positivos.forEach(function(p){
+      html += '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">'+
+              '<span style="color:var(--primary);flex-shrink:0">&#10003;</span><span>'+p+'</span></div>';
+    });
+    html += '</div>';
+  }
+
+  /* ── 4. Roteiro — Ações prioritárias ───────────────────────────────── */
+  var acoes = [];
+
+  if (semCompra.length) {
+    var top = semCompra.slice(0,3).map(function(c){ return c.name; }).join(', ');
+    acoes.push({ icon:'&#128222;', cor:'var(--danger)', titulo:'Contatar clientes inativos',
+      desc:'Ligue para <strong>'+top+(semCompra.length>3?' e mais '+(semCompra.length-3)+' outros':'')+
+           '</strong> — já compraram antes e podem reativar neste mês.' });
+  }
+
+  if (faltaMeta>0 && dLeft>0) {
+    acoes.push({ icon:'&#128200;', cor:'var(--warn)', titulo:'Ritmo necessário para bater a meta',
+      desc:'Precisa de <strong>'+fk(mdNec)+'/dia</strong> nos próximos <strong>'+dLeft+' dias</strong>'+
+           ' (ritmo atual: '+fk(mdAtual)+'/dia). Faltam <strong>'+ff(faltaMeta)+'</strong> na projeção.' });
+  }
+
+  if (catsBoas.length) {
+    var nomesB = catsBoas.slice(0,2).map(function(c){ return c.name+' ('+c.mg.toFixed(1)+'%)'; }).join(' e ');
+    acoes.push({ icon:'&#128138;', cor:'var(--primary)', titulo:'Priorize categorias de alta margem',
+      desc:'Aumente o mix de <strong>'+nomesB+'</strong> para elevar a margem geral e compensar categorias mais baixas.' });
+  }
+
+  if (catsBaixas.length) {
+    var nomesR = catsBaixas.map(function(c){ return c.name; }).join(', ');
+    acoes.push({ icon:'&#128683;', cor:'var(--warn)', titulo:'Evite descontos em margem crítica',
+      desc:'Não conceda descontos em <strong>'+nomesR+'</strong> — margem já abaixo de '+MG_IDEAL+'%. Qualquer desconto piora o resultado.' });
+  }
+
+  if (emQueda.length) {
+    var nomesQ = emQueda.slice(0,2).map(function(c){ return c.name; }).join(' e ');
+    acoes.push({ icon:'&#128260;', cor:'var(--blue)', titulo:'Recuperar clientes em queda',
+      desc:'Visite ou ligue para <strong>'+nomesQ+'</strong> — volume projetado caindo mais de 15% vs mês anterior.' });
+  }
+
+  if (acoes.length) {
+    html += '<div class="card">';
+    html += '<div class="ctitle">&#128204; Roteiro do Representante &mdash; Ações Prioritárias</div>';
+    acoes.forEach(function(a){
+      html += '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">';
+      html += '<div style="width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.06);'+
+              'border:1.5px solid '+a.cor+';display:flex;align-items:center;justify-content:center;'+
+              'font-size:15px;flex-shrink:0">'+a.icon+'</div>';
+      html += '<div style="flex:1"><div style="font-size:12px;font-weight:700;color:'+a.cor+';margin-bottom:4px">'+a.titulo+'</div>'+
+              '<div style="font-size:11px;color:var(--muted);line-height:1.6">'+a.desc+'</div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = '<div style="padding-bottom:80px">'+html+'</div>';
+};
+
+/* helpers locais */
+function row(lbl, val) {
+  return '<div class="prow"><span class="plabel">'+lbl+'</span><span class="pval">'+val+'</span></div>';
+}
+function bloco(tipo, titulo, texto) {
+  var cor = tipo==='danger'?'var(--danger)':'var(--warn)';
+  var bg  = tipo==='danger'?'rgba(255,82,82,.07)':'rgba(246,181,74,.07)';
+  return '<div style="margin-bottom:12px;padding:10px;background:'+bg+';border-radius:8px">'+
+         '<div style="font-size:12px;font-weight:700;color:'+cor+'">'+titulo+'</div>'+
+         '<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">'+texto+'</div></div>';
+}
+function itemLinha(nome, detalhe) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;'+
+         'padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">'+
+         '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">'+nome+'</span>'+
+         '<span style="flex-shrink:0">'+detalhe+'</span></div>';
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', function() {
+  injectVendPicker();
+  injectAcoesTab();
+});
+
 })();
 </script>
 """
