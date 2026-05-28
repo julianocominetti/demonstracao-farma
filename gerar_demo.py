@@ -23,7 +23,7 @@ DIAS_EL   = 20
 DIAS_TOT  = 31
 
 # Nome da empresa fictícia
-EMPRESA = "FarmaCenter Distribuidora"
+EMPRESA = "Mediton"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -524,12 +524,12 @@ def main():
     html = html.replace(
         "const DIR_LOGINS = {}; /* GERADO POR gerar_html.py */",
         f"const DIR_LOGINS = {logins_json}; /* DEMO */")
-    html = html.replace("DATA_ATUALIZACAO", "Demo — FarmaCenter Distribuidora")
+    html = html.replace("DATA_ATUALIZACAO", "Demo — Mediton")
 
     html = html.replace(CAT_METAS_ORIG, CAT_METAS_DEMO)
     html = html.replace(
         "<title>Agente Fábrica</title>",
-        "<title>InfoVendas Demo — FarmaCenter Distribuidora</title>")
+        "<title>InfoVendas Demo — Mediton</title>")
     html = html.replace("</head>", DEMO_CSS + "</head>")
     html = html.replace("</body>", DEMO_JS + "</body>")
 
