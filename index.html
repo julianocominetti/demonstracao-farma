@@ -2066,54 +2066,56 @@ document.getElementById('ip').addEventListener('keydown',e=>{if(e.key==='Enter')
     { code: "004", name: "Tatiana Alves",   region: "BH / Rio de Janeiro"    }
   ];
 
-  function injectVendPicker() {
-    var login = document.getElementById('login');
-    var picker = document.createElement('div');
-    picker.id = 'demo-vend-picker';
-    var html = '<div class="dvp-title">&#128100; Selecione o Representante</div>';
-    VENDORS.forEach(function(v) {
-      html += '<button class="btn-vend" onclick="demoBootVend('' + v.code + '')">' +
-                v.name + '<span>' + v.region + '</span>' +
-              '</button>';
-    });
-    html += '<button class="btn-ghost" onclick="demoBtnBack()" ' +
-            'style="margin-top:4px;width:100%;padding:12px">&#8592; Voltar</button>';
-    picker.innerHTML = html;
-    login.appendChild(picker);
+  function showPicker() {
+    document.getElementById('mode-sel').style.display        = 'none';
+    document.getElementById('form-dir').style.display        = 'none';
+    document.getElementById('form-vend').style.display       = 'none';
+    document.getElementById('demo-vend-picker').style.display = 'block';
   }
 
-  /* Override showMode para o fluxo demo */
-  window.showMode = function(mode) {
-    var modeSel  = document.getElementById('mode-sel');
-    var dirForm  = document.getElementById('dir-form');
-    var vendForm = document.getElementById('vend-form');
-    var picker   = document.getElementById('demo-vend-picker');
+  function hidePicker() {
+    document.getElementById('mode-sel').style.display        = 'flex';
+    document.getElementById('demo-vend-picker').style.display = 'none';
+  }
 
-    if (mode === 'dir') {
-      bootDir('demo');
-      return;
-    }
-    if (mode === 'vend') {
-      modeSel.style.display  = 'none';
-      dirForm.style.display  = 'none';
-      vendForm.style.display = 'none';
-      picker.style.display   = 'block';
-      return;
-    }
-    /* null — voltar para seleção inicial */
-    modeSel.style.display  = 'flex';
-    dirForm.style.display  = 'none';
-    vendForm.style.display = 'none';
-    picker.style.display   = 'none';
-  };
+  function injectVendPicker() {
+    var login  = document.getElementById('login');
+    var picker = document.createElement('div');
+    picker.id = 'demo-vend-picker';
+    picker.style.cssText = 'display:none;width:100%';
 
-  window.demoBootVend = function(cod) {
-    bootData(VENDORS_DATA[cod]);
-  };
+    var title = document.createElement('div');
+    title.className   = 'dvp-title';
+    title.textContent = 'Selecione o Representante';
+    picker.appendChild(title);
 
-  window.demoBtnBack = function() {
-    window.showMode(null);
-  };
+    VENDORS.forEach(function(v) {
+      var btn = document.createElement('button');
+      btn.className = 'btn-vend';
+      var span = document.createElement('span');
+      span.textContent = v.region;
+      btn.textContent  = v.name;
+      btn.appendChild(span);
+      btn.onclick = (function(code) {
+        return function() { bootData(VENDORS_DATA[code]); };
+      })(v.code);
+      picker.appendChild(btn);
+    });
+
+    var back = document.createElement('button');
+    back.className  = 'btn-ghost';
+    back.style.cssText = 'margin-top:4px;width:100%;padding:12px';
+    back.textContent   = '← Voltar';
+    back.onclick = hidePicker;
+    picker.appendChild(back);
+
+    login.appendChild(picker);
+
+    /* Substituir handlers dos botões originais */
+    var btns = document.querySelectorAll('#mode-sel button');
+    if (btns[0]) btns[0].onclick = function() { bootDir('demo'); };
+    if (btns[1]) btns[1].onclick = showPicker;
+  }
 
   window.addEventListener('DOMContentLoaded', function() {
     injectVendPicker();
