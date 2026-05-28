@@ -375,109 +375,93 @@ def build_director(todos):
 
 DEMO_CSS = """
 <style id="demo-style">
-#demo-banner{
-  position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;
-  background:linear-gradient(90deg,#0d1b2a,#1b263b);
-  color:#fff;padding:7px 14px;border-radius:0 0 14px 14px;
-  font-size:11px;font-weight:700;
-  display:flex;align-items:center;gap:8px;
-  box-shadow:0 2px 16px rgba(0,0,0,.5);white-space:nowrap;
-  border-bottom:2px solid var(--primary,#00D68F)
+/* Esconde logo/branding da tela de login */
+#login .brand { display: none !important; }
+
+/* Picker de vendedores */
+#demo-vend-picker { display: none; width: 100%; }
+#demo-vend-picker .dvp-title {
+  font-size: 13px; font-weight: 700; text-align: center;
+  margin-bottom: 16px; color: #333; letter-spacing: .2px;
 }
-#demo-banner .db-label{color:var(--primary,#00D68F);letter-spacing:.6px}
-#demo-banner .db-sep{color:#333}
-#demo-banner button{
-  background:rgba(0,214,143,.12);border:1px solid rgba(0,214,143,.35);
-  color:#00D68F;padding:3px 10px;border-radius:20px;
-  font-size:10px;font-weight:700;cursor:pointer;transition:background .15s
+#demo-vend-picker .btn-vend {
+  width: 100%; padding: 14px 16px;
+  background: linear-gradient(135deg, #5B9BF5, #3a7bd5);
+  color: #fff; border: none; border-radius: 13px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  margin-bottom: 10px; text-align: left;
+  box-shadow: 0 4px 16px rgba(91,155,245,.3);
+  transition: opacity .15s;
 }
-#demo-banner button:hover{background:rgba(0,214,143,.28)}
-#demo-banner button.active{background:rgba(0,214,143,.32);border-color:#00D68F}
-#demo-banner .db-vend-sel{
-  position:absolute;top:38px;left:50%;transform:translateX(-50%);
-  background:#141926;border:1px solid #1E2B40;border-radius:10px;
-  padding:6px 0;min-width:200px;box-shadow:0 4px 20px rgba(0,0,0,.6);
-  display:none;z-index:10000
+#demo-vend-picker .btn-vend:active { opacity: .85; }
+#demo-vend-picker .btn-vend span {
+  font-size: 11px; font-weight: 400; opacity: .8;
+  display: block; margin-top: 2px;
 }
-#demo-banner .db-vend-sel.open{display:block}
-#demo-banner .db-vend-sel button{
-  display:block;width:100%;border:none;border-radius:0;background:none;
-  color:#E8EDF5;padding:9px 16px;font-size:12px;text-align:left;
-  border-bottom:1px solid #1E2B40
-}
-#demo-banner .db-vend-sel button:last-child{border-bottom:none}
-#demo-banner .db-vend-sel button:hover{background:rgba(0,214,143,.08);color:#00D68F}
-.hdr{top:36px !important}
 </style>
 """
 
 DEMO_JS = """
 <script id="demo-script">
 (function() {
-  var VENDOR_CODES = ["001","002","003","004"];
-  var VENDOR_NAMES = {
-    "001": "Anderson Silva",
-    "002": "Camila Ferreira",
-    "003": "Rodrigo Costa",
-    "004": "Tatiana Alves"
-  };
-  var vendDropOpen = false;
+  var VENDORS = [
+    { code: "001", name: "Anderson Silva",  region: "SP Capital / Guarulhos" },
+    { code: "002", name: "Camila Ferreira", region: "Interior SP"            },
+    { code: "003", name: "Rodrigo Costa",   region: "ABC / Santos"           },
+    { code: "004", name: "Tatiana Alves",   region: "BH / Rio de Janeiro"    }
+  ];
 
-  function createBanner() {
-    var b = document.createElement('div');
-    b.id = 'demo-banner';
-    b.innerHTML =
-      '<span class="db-label">&#128138; DEMO</span>' +
-      '<span class="db-sep">|</span>' +
-      '<span style="color:#7A8AA0;font-size:10px">FarmaCenter Distribuidora</span>' +
-      '<span class="db-sep">|</span>' +
-      '<button id="db-btn-dir" onclick="demoBootDir()">&#127970; Diretoria</button>' +
-      '<button id="db-btn-vend" onclick="demoToggleVend()">&#128100; Representante &#9660;</button>' +
-      '<div class="db-vend-sel" id="db-vend-drop"></div>';
-    document.body.appendChild(b);
-
-    var drop = document.getElementById('db-vend-drop');
-    VENDOR_CODES.forEach(function(cod) {
-      var btn = document.createElement('button');
-      btn.textContent = VENDOR_NAMES[cod];
-      btn.onclick = function() { demoBootVend(cod); };
-      drop.appendChild(btn);
+  function injectVendPicker() {
+    var login = document.getElementById('login');
+    var picker = document.createElement('div');
+    picker.id = 'demo-vend-picker';
+    var html = '<div class="dvp-title">&#128100; Selecione o Representante</div>';
+    VENDORS.forEach(function(v) {
+      html += '<button class="btn-vend" onclick="demoBootVend(\'' + v.code + '\')">' +
+                v.name + '<span>' + v.region + '</span>' +
+              '</button>';
     });
-
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('#demo-banner')) {
-        document.getElementById('db-vend-drop').classList.remove('open');
-        vendDropOpen = false;
-      }
-    });
+    html += '<button class="btn-ghost" onclick="demoBtnBack()" ' +
+            'style="margin-top:4px;width:100%;padding:12px">&#8592; Voltar</button>';
+    picker.innerHTML = html;
+    login.appendChild(picker);
   }
 
-  window.demoBootDir = function() {
-    document.getElementById('db-vend-drop').classList.remove('open');
-    vendDropOpen = false;
-    document.getElementById('db-btn-dir').classList.add('active');
-    document.getElementById('db-btn-vend').classList.remove('active');
-    bootDir('demo');
+  /* Override showMode para o fluxo demo */
+  window.showMode = function(mode) {
+    var modeSel  = document.getElementById('mode-sel');
+    var dirForm  = document.getElementById('dir-form');
+    var vendForm = document.getElementById('vend-form');
+    var picker   = document.getElementById('demo-vend-picker');
+
+    if (mode === 'dir') {
+      bootDir('demo');
+      return;
+    }
+    if (mode === 'vend') {
+      modeSel.style.display  = 'none';
+      dirForm.style.display  = 'none';
+      vendForm.style.display = 'none';
+      picker.style.display   = 'block';
+      return;
+    }
+    /* null — voltar para seleção inicial */
+    modeSel.style.display  = 'flex';
+    dirForm.style.display  = 'none';
+    vendForm.style.display = 'none';
+    picker.style.display   = 'none';
   };
 
   window.demoBootVend = function(cod) {
-    document.getElementById('db-vend-drop').classList.remove('open');
-    vendDropOpen = false;
-    document.getElementById('db-btn-dir').classList.remove('active');
-    document.getElementById('db-btn-vend').classList.add('active');
     bootData(VENDORS_DATA[cod]);
   };
 
-  window.demoToggleVend = function() {
-    vendDropOpen = !vendDropOpen;
-    var drop = document.getElementById('db-vend-drop');
-    if (vendDropOpen) drop.classList.add('open');
-    else drop.classList.remove('open');
+  window.demoBtnBack = function() {
+    window.showMode(null);
   };
 
   window.addEventListener('DOMContentLoaded', function() {
-    createBanner();
-    demoBootDir();
+    injectVendPicker();
   });
 })();
 </script>
@@ -544,9 +528,6 @@ def main():
     html = html.replace(
         "<title>Agente Fábrica</title>",
         "<title>InfoVendas Demo — FarmaCenter Distribuidora</title>")
-    html = html.replace(
-        '<div class="screen active" id="login">',
-        '<div class="screen" id="login">')
     html = html.replace("</head>", DEMO_CSS + "</head>")
     html = html.replace("</body>", DEMO_JS + "</body>")
 
