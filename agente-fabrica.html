@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Agente Fábrica</title>
+<style>
+/* ══════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0B0F1A; --surf:#141926; --raised:#1A2132; --border:#1E2B40;
+  --primary:#00D68F; --p2:#00A86B;
+  --warn:#F6B54A; --danger:#FF5252; --blue:#5B9BF5;
+  --text:#E8EDF5; --muted:#7A8AA0;
+  --r:16px;
+}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:480px;margin:0 auto;overflow-x:hidden}
+
+/* ══════ SCREENS ══════ */
+.screen{display:none;flex-direction:column;min-height:100vh}
+.screen.active{display:flex}
+
+/* ══════ LOADING ══════ */
+#ov{display:none;position:fixed;inset:0;z-index:999;background:rgba(11,15,26,.93);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#ov.on{display:flex}
+.spin{width:42px;height:42px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ══════ LOGIN ══════ */
+#login{justify-content:center;align-items:center;padding:36px 24px;background:#fff}
+.brand{text-align:center;margin-bottom:40px}
+.brand-icon{width:78px;height:78px;margin:0 auto 18px;border-radius:22px;
+  background:linear-gradient(135deg,var(--primary),var(--p2));
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  box-shadow:0 8px 30px rgba(0,214,143,.25)}
+.brand h1{font-size:25px;font-weight:800;letter-spacing:-.5px}
+.brand h1 em{color:var(--primary);font-style:normal}
+.brand p{color:var(--muted);font-size:13px;margin-top:6px}
+.fld{margin-bottom:14px;width:100%}
+.fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#555;margin-bottom:7px}
+.fld input{width:100%;padding:14px 16px;background:#f5f5f5;border:1.5px solid #ddd;border-radius:13px;color:#111;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s}
+.fld input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,214,143,.12)}
+.btn-main{width:100%;padding:15px;background:linear-gradient(135deg,var(--primary),var(--p2));color:#fff;border:none;border-radius:13px;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px;box-shadow:0 4px 20px rgba(0,214,143,.3);transition:opacity .15s}
+.btn-main:active{opacity:.85}
+.err{display:none;margin-top:12px;padding:10px 14px;background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.2);border-radius:10px;color:#e00;font-size:13px;text-align:center}
+.demo-link{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;cursor:pointer;background:none;border:none;width:100%;text-decoration:underline;text-underline-offset:3px}
+
+/* ══════ DEMO MODAL ══════ */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;align-items:flex-end;justify-content:center}
+.mbg.on{display:flex}
+.modal{background:var(--surf);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:72vh;display:flex;flex-direction:column;gap:12px}
+.modal h3{font-size:16px;font-weight:700}
+.modal p{color:var(--muted);font-size:12px}
+.modal textarea{flex:1;min-height:180px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-size:12px;padding:12px;outline:none;resize:none;font-family:monospace}
+.modal-btns{display:flex;gap:10px}
+.btn-ghost{flex:1;padding:12px;background:#f0f0f0;border:1px solid #ccc;border-radius:12px;color:#555;font-size:14px;cursor:pointer}
+.btn-acc{flex:2;padding:12px;background:var(--primary);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ══════ HEADER ══════ */
+.hdr{position:sticky;top:0;z-index:50;background:var(--surf);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.hdr-l{display:flex;flex-direction:column}
+.hdr-name{font-size:15px;font-weight:700}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--p2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;cursor:pointer;flex-shrink:0}
+
+/* ══════ CONTENT & NAV ══════ */
+.content{overflow-y:auto;padding:14px;padding-bottom:calc(72px + env(safe-area-inset-bottom,0))}
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surf);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom,0);z-index:50}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 2px 7px;border:none;background:none;color:var(--muted);font-size:10px;gap:3px;cursor:pointer;transition:color .2s}
+.nb .ni{font-size:19px}
+.nb.on{color:var(--primary)}
+
+/* ══════ CARDS ══════ */
+.card{background:var(--surf);border-radius:var(--r);border:1px solid var(--border);padding:16px;margin-bottom:12px}
+.ctitle{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.card.hi{border-color:rgba(0,214,143,.35);background:linear-gradient(145deg,var(--surf),#0D1F18)}
+.card.wa{border-color:rgba(246,181,74,.3)}
+.card.da{border-color:rgba(255,82,82,.3)}
+
+/* ══════ BADGE ══════ */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.badge.g{background:rgba(0,214,143,.12);color:var(--primary)}
+.badge.y{background:rgba(246,181,74,.12);color:var(--warn)}
+.badge.r{background:rgba(255,82,82,.12);color:var(--danger)}
+.badge.b{background:rgba(91,155,245,.12);color:var(--blue)}
+
+/* ══════ PROGRESS BAR ══════ */
+.pbar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.pfill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.pfill.g{background:linear-gradient(90deg,var(--primary),#5FFFC0)}
+.pfill.y{background:linear-gradient(90deg,var(--warn),#FFD98F)}
+.pfill.r{background:linear-gradient(90deg,var(--danger),#FF9090)}
+
+/* ══════ RING CHART ══════ */
+.ring-wrap{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.ring{width:90px;height:90px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(var(--rc,var(--primary)) calc(var(--pct,0)*1%),var(--border) 0)}
+.ring-in{width:70px;height:70px;border-radius:50%;background:var(--surf);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-pct{font-size:16px;font-weight:800}
+.ring-lbl{font-size:9px;color:var(--muted);margin-top:1px}
+.ring-right{flex:1}
+.r-fat{font-size:26px;font-weight:800;letter-spacing:-1px}
+.r-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.r-proj{font-size:12px;margin-top:5px}
+
+/* ══════ KPI GRID ══════ */
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.klbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.kval{font-size:20px;font-weight:800;letter-spacing:-.5px;margin-top:5px}
+.ksub{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* ══════ MINI-INFO ROW (3 cols) ══════ */
+.irow{display:flex;gap:8px;margin-top:10px}
+.icol{flex:1;background:var(--raised);border-radius:10px;padding:8px;text-align:center}
+.icol-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.icol-val{font-size:15px;font-weight:800}
+
+/* ══════ VERTICAL BAR CHART ══════ */
+.vchart{display:flex;align-items:flex-end;gap:5px;height:100px}
+.vc-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%}
+.vc-bar{width:100%;border-radius:4px 4px 0 0;min-height:3px}
+.vc-bar.act{background:linear-gradient(0deg,var(--primary),#5FFFC0)}
+.vc-bar.done{background:var(--warn)}
+.vc-val{font-size:8px;color:var(--text);font-weight:700;text-align:center;white-space:nowrap;line-height:1}
+.vc-lbl{font-size:9px;color:var(--muted)}
+
+/* ══════ HORIZONTAL BAR ROWS ══════ */
+.hrow{padding:10px 0;border-bottom:1px solid var(--border)}
+.hrow:last-child{border-bottom:none}
+.hrow-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:8px}
+.hrow-left{min-width:0;flex:1}
+.hrow-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.hrow-right{text-align:right;flex-shrink:0}
+.hrow-val{font-size:13px;font-weight:700}
+.hrow-2nd{font-size:10px;color:var(--muted)}
+.hbar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.hbar-f{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* ══════ RANK BADGE ══════ */
+.rnk{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.rnk.r1{background:rgba(246,181,74,.2);color:var(--warn)}
+.rnk.r2{background:rgba(192,192,192,.15);color:#9CA3AF}
+.rnk.r3{background:rgba(180,83,9,.15);color:#CD7F32}
+.rnk.rn{background:var(--raised);color:var(--muted)}
+
+/* ══════ TREND ══════ */
+.tr-up{color:var(--primary);font-size:11px;font-weight:700}
+.tr-dn{color:var(--danger);font-size:11px;font-weight:700}
+.tr-fl{color:var(--muted);font-size:11px}
+
+/* ══════ MONTH CARD (Mensal tab) ══════ */
+.mcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.mcard.cur{border-color:rgba(0,214,143,.4);background:linear-gradient(145deg,#141926,#0D1F18)}
+.mcard-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.mcard-title{font-size:15px;font-weight:700}
+.mcard-fat{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.mcard-meta{font-size:12px;color:var(--muted);margin-bottom:10px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--raised);color:var(--muted)}
+
+/* ══════ COMPARE TABLE ══════ */
+.ctab{width:100%;border-collapse:collapse;font-size:12px}
+.ctab th{text-align:center;padding:6px 4px;color:var(--muted);font-weight:700;font-size:11px;border-bottom:1px solid var(--border)}
+.ctab th:first-child{text-align:left}
+.ctab td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--border)}
+.ctab td:first-child{text-align:left;font-weight:600}
+.ctab tr.total td{font-weight:800;border-top:2px solid var(--border);border-bottom:none}
+.pos{color:var(--primary)}.neg{color:var(--danger)}
+
+/* ══════ PROJ TAB ══════ */
+.prow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:none}
+.plabel{font-size:13px;color:var(--muted)}
+.pval{font-size:13px;font-weight:700}
+.proj3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.p3col{background:var(--raised);border-radius:12px;padding:10px;text-align:center}
+.p3lbl{font-size:9px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.p3val{font-size:16px;font-weight:800}
+.p3sub{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* ══════ FILTER BUTTONS ══════ */
+.filters{display:flex;gap:7px;margin-bottom:12px}
+.fbtn{flex:1;padding:9px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surf);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s}
+.fbtn.on{border-color:var(--primary);background:rgba(0,214,143,.1);color:var(--primary)}
+.fbtn.on-r{border-color:var(--danger);background:rgba(255,82,82,.1);color:var(--danger)}
+
+/* ══════ SCROLLBAR ══════ */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ══════ ALERT BOX ══════ */
+.abox{border-radius:12px;padding:11px 14px;border:1px solid}
+.abox.g{background:rgba(0,214,143,.07);border-color:rgba(0,214,143,.25)}
+.abox.y{background:rgba(246,181,74,.07);border-color:rgba(246,181,74,.25)}
+.abox.r{background:rgba(255,82,82,.07);border-color:rgba(255,82,82,.25)}
+.abox-t{font-size:12px;font-weight:700;margin-bottom:4px}
+.abox-d{font-size:12px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="ov"><div class="spin"></div><p style="color:var(--muted);font-size:13px">Carregando...</p></div>
+
+</div>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div class="screen active" id="login">
+  <div class="brand">
+    <img src="data:image/jpeg;base64,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" style="width:200px;height:auto;margin-bottom:24px;display:block;margin-left:auto;margin-right:auto">
+  </div>
+  <!-- Seletor de perfil -->
+  <div id="mode-sel" style="display:flex;flex-direction:column;gap:12px;width:100%;margin-top:8px">
+    <button class="btn-main" onclick="showMode('dir')">🏢 Diretoria</button>
+    <button class="btn-main" onclick="showMode('vend')" style="background:linear-gradient(135deg,#5B9BF5,#3a7bd5)">👤 Vendedores</button>
+    <div style="margin-top:18px;font-size:11px;color:#aaa;text-align:center">
+      🕐 Atualizado em: <strong style="color:#ccc">DATA_ATUALIZACAO</strong>
+    </div>
+  </div>
+
+  <!-- Form Diretoria -->
+  <div id="form-dir" style="display:none;width:100%">
+    <div class="fld">
+      <label>Usuário</label>
+      <input id="du" type="text" placeholder="Ex: peterson" autocomplete="off" autocapitalize="none">
+    </div>
+    <div class="fld">
+      <label>Senha</label>
+      <input id="dp" type="password" placeholder="Senha">
+    </div>
+    <button class="btn-main" onclick="doLoginDir()">Entrar como Diretoria</button>
+    <button class="btn-ghost" onclick="showMode(null)" style="margin-top:8px;width:100%;padding:12px">← Voltar</button>
+  </div>
+
+  <!-- Form Vendedores -->
+  <div id="form-vend" style="display:none;width:100%">
+    <div class="fld">
+      <label>Código do Operador</label>
+      <input id="ic" type="text" placeholder="Ex: 000033" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="fld">
+      <label>Senha</label>
+      <input id="ip" type="password" placeholder="Senha">
+    </div>
+    <button class="btn-main" onclick="doLogin()">Entrar como Vendedor</button>
+    <button class="btn-ghost" onclick="showMode(null)" style="margin-top:8px;width:100%;padding:12px">← Voltar</button>
+  </div>
+
+  <div class="err" id="err"></div>
+</div>
+
+<!-- ═══════════════ DIRETORIA ═══════════════ -->
+<div class="screen" id="dir-app">
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="hdr-name" id="d-name">Diretoria</div>
+      <div class="hdr-sub" id="d-sub"></div>
+    </div>
+    <div class="av" onclick="logoutDir()">✕</div>
+  </div>
+
+  <div class="content" id="d-content">
+    <!-- Tab Visão Geral -->
+    <div id="dt-geral"></div>
+    <!-- Tab Vendedores -->
+    <div id="dt-vend" style="display:none"></div>
+    <!-- Tab Meta Categoria -->
+    <div id="dt-metacat" style="display:none"></div>
+    <!-- Tab Cidades -->
+    <div id="dt-cid" style="display:none"></div>
+    <!-- Tab Clientes -->
+    <div id="dt-cli" style="display:none"></div>
+  </div>
+
+  <nav class="bnav">
+    <button class="nb on" id="dnb-geral"   onclick="goTabDir('geral',this)"><span class="ni">📊</span>Visão Geral</button>
+    <button class="nb"    id="dnb-metacat" onclick="goTabDir('metacat',this)"><span class="ni">🎯</span>Metas Cat.</button>
+    <button class="nb"    id="dnb-vend"    onclick="goTabDir('vend',this)"><span class="ni">👥</span>Vendedores</button>
+    <button class="nb"    id="dnb-cid"     onclick="goTabDir('cid',this)"><span class="ni">🗺️</span>Cidades</button>
+    <button class="nb"    id="dnb-cli"     onclick="goTabDir('cli',this)"><span class="ni">👥</span>Clientes</button>
+  </nav>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div class="screen" id="app">
+  <div class="hdr">
+    <div class="hdr-l">
+      <span class="hdr-name" id="h-name">—</span>
+      <span class="hdr-sub"  id="h-sub">—</span>
+    </div>
+    <button onclick="logout()" style="display:flex;align-items:center;gap:5px;padding:7px 12px;background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.25);border-radius:20px;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer">
+      ⬅ Sair
+    </button>
+  </div>
+
+  <div id="t-inicio"   class="content"></div>
+  <div id="t-mensal"   class="content" style="display:none"></div>
+  <div id="t-clientes" class="content" style="display:none"></div>
+  <div id="t-cats"     class="content" style="display:none"></div>
+  <div id="t-dash"     class="content" style="display:none"></div>
+
+  <nav class="bnav">
+    <button class="nb on"  onclick="goTab('inicio',this)"><span class="ni">🏠</span>Início</button>
+    <button class="nb"     onclick="goTab('mensal',this)"><span class="ni">📅</span>Mensal</button>
+    <button class="nb"     onclick="goTab('clientes',this)"><span class="ni">👥</span>Clientes</button>
+    <button class="nb"     onclick="goTab('cats',this)"><span class="ni">📦</span>Categorias</button>
+    <button class="nb"     onclick="goTab('dash',this)"><span class="ni">📊</span>Dashboard</button>
+  </nav>
+</div>
+
+<!-- ═══════════════ JAVASCRIPT ═══════════════ -->
+<script>
+// ╔══════════════════════════════════════════╗
+// ║  DADOS DOS VENDEDORES                    ║
+// ║  Gerado por gerar_html.py                ║
+// ╚══════════════════════════════════════════╝
+const VENDORS_DATA = {}; /* GERADO POR gerar_html.py */
+const DIRECTOR_DATA = {}; /* GERADO POR gerar_html.py */
+
+// Helpers de mês
+const MONTH_ORDER = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function prevMonthKey(m) {
+  const i = MONTH_ORDER.indexOf(m.toLowerCase());
+  return i > 0 ? MONTH_ORDER[i-1] : null;
+}
+// Acessa faturamento do mês atual do cliente (compatível com JSON e TXT)
+function cFat(c)  { return c.curFat  !== undefined ? c.curFat  : (c[D.curMonth.toLowerCase()]||0); }
+function cPrev(c) { return c.prevFat !== undefined ? c.prevFat : (c[prevMonthKey(D.curMonth)]||0); }
+// Faturamento mês atual de categoria
+function catCur(c) { return c.curFat !== undefined ? c.curFat : (c.mai||0); }
+
+// ╔══════════════════════════════════════════╗
+// ║  STATE                                   ║
+// ╚══════════════════════════════════════════╝
+let D = null;
+let clientFilter = 'all';
+
+// ╔══════════════════════════════════════════╗
+// ║  AUTH                                    ║
+// ╚══════════════════════════════════════════╝
+// ── Seletor de perfil ──────────────────────────────────────────────────────
+function showMode(mode) {
+  document.getElementById('mode-sel').style.display  = mode ? 'none' : 'flex';
+  document.getElementById('form-dir').style.display  = mode === 'dir'  ? 'block' : 'none';
+  document.getElementById('form-vend').style.display = mode === 'vend' ? 'block' : 'none';
+  document.getElementById('err').style.display = 'none';
+  if (mode === 'dir')  { document.getElementById('du').focus(); }
+  if (mode === 'vend') { document.getElementById('ic').focus(); }
+}
+
+// ── Login Vendedor ──────────────────────────────────────────────────────────
+function doLogin() {
+  const code = document.getElementById('ic').value.trim();
+  const pass = document.getElementById('ip').value;
+  document.getElementById('err').style.display = 'none';
+
+  if (!code) { showErr('Informe o código e a senha.'); return; }
+
+  const data = VENDORS_DATA[code];
+  if (!data) { showErr('Operador não encontrado.'); return; }
+
+  const senhaCorreta = data.senha || (code + '@');
+  if (pass !== senhaCorreta) { showErr('Senha incorreta.'); return; }
+
+  bootData(data);
+}
+
+function logout() {
+  D = null;
+  document.getElementById('ic').value = '';
+  document.getElementById('ip').value = '';
+  showMode(null);
+  goScreen('login');
+}
+
+// ── Login Diretoria ─────────────────────────────────────────────────────────
+const DIR_LOGINS = {}; /* GERADO POR gerar_html.py */
+
+function doLoginDir() {
+  const user = document.getElementById('du').value.trim().toLowerCase();
+  const pass = document.getElementById('dp').value;
+  document.getElementById('err').style.display = 'none';
+
+  if (!DIR_LOGINS[user] || pass !== DIR_LOGINS[user]) {
+    showErr('Usuário ou senha incorretos.');
+    return;
+  }
+  bootDir(user);
+}
+
+function logoutDir() {
+  showMode(null);
+  goScreen('login');
+}
+
+function bootDir(user) {
+  const nm = user.charAt(0).toUpperCase() + user.slice(1);
+  document.getElementById('d-name').textContent = nm;
+  document.getElementById('d-sub').textContent  = 'Diretoria · ' + (DIRECTOR_DATA.curMonth||'') + '/2026';
+  goScreen('dir-app');
+  goTabDir('geral', document.getElementById('dnb-geral'));
+}
+
+function showErr(m) {
+  const e = document.getElementById('err');
+  e.textContent = m;
+  e.style.display = 'block';
+}
+
+// ╔══════════════════════════════════════════╗
+// ║  BOOT                                    ║
+// ╚══════════════════════════════════════════╝
+function bootData(data) {
+  D = data;
+  document.getElementById('h-name').textContent = D.name;
+  document.getElementById('h-sub').textContent  = `Cód ${D.code} · Jan–${D.curMonth}/2026`;
+  const av = document.getElementById('h-av'); if(av) av.textContent = (D.name||'?')[0].toUpperCase();
+  renderAll();
+  goScreen('app');
+  goTab('inicio', document.querySelector('.nb.on'));
+}
+
+function pr(s) { if(!s)return 0; return parseFloat(s.replace(/\./g,'').replace(',','.'))||0; }
+function fk(v) {
+  if(!v) return 'R$0';
+  if(v>=1e6) return 'R$'+(v/1e6).toFixed(2).replace('.',',')+'M';
+  if(v>=1e3) return 'R$'+Math.round(v/1e3)+'k';
+  return 'R$'+v.toFixed(0);
+}
+function ff(v) { return 'R$'+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function cap(s) { return s?s.charAt(0).toUpperCase()+s.slice(1).toLowerCase():s; }
+function pcls(p) { return p>=100?'g':p>=65?'y':'r'; }
+function mcls(m) { return m>24?'g':m>=22?'y':'r'; }
+function mcol(m) { return m>24?'var(--primary)':m>=22?'var(--warn)':'var(--danger)'; }
+
+// ╔══════════════════════════════════════════╗
+// ║  RENDER ALL                              ║
+// ╚══════════════════════════════════════════╝
+function renderAll() {
+  renderInicio();
+  renderMensal();
+  renderClientes();
+  renderCats();
+  renderDash();
+  vendDevExpanded = null;
+  const el = document.getElementById('vend-dev-card');
+  if (el) el.innerHTML = buildVendDevCard();
+}
+
+// ══════════════════════════════════════
+// TAB 1 — INÍCIO
+// ══════════════════════════════════════
+function renderInicio() {
+  const cur  = D.m26.find(m=>m.month===D.curMonth) || D.m26[D.m26.length-1] || {};
+  const prev = D.m26[D.m26.indexOf(cur)-1] || {};
+  const pct  = cur.meta>0 ? Math.min(cur.fat/cur.meta*100, 110) : 0;
+  const cls  = pcls(pct);
+  const rcol = cls==='g'?'var(--primary)':cls==='y'?'var(--warn)':'var(--danger)';
+  const gap  = Math.max((cur.meta||0)-(cur.fat||0), 0);
+  const dL   = D.daysTotal - D.daysEl;
+  const varP = prev.fat ? ((cur.fat-prev.fat)/prev.fat*100) : null;
+
+  // Totals
+  const totFat  = D.m26.reduce((s,m)=>s+m.fat,0);
+  const totMeta = D.m26.reduce((s,m)=>s+m.meta,0);
+  const totDev  = D.m26.reduce((s,m)=>s+(m.dev||0),0);
+  const totPct  = totMeta>0?totFat/totMeta*100:0;
+
+  // Bar chart all months
+  const maxV = Math.max(...D.m26.map(m=>m.fat),1);
+  const bars = D.m26.map(m=>{
+    const h = Math.round((m.fat/maxV)*64);
+    const a = m.month===D.curMonth;
+    return `<div class="vc-col">
+      <span class="vc-val" style="color:${a?'var(--primary)':'var(--warn)'}">${fk(m.fat)}</span>
+      <div class="vc-bar ${a?'act':'done'}" style="height:${h}px;margin-top:auto"></div>
+      <span class="vc-lbl">${m.month}</span>
+    </div>`;
+  }).join('');
+
+  // Top 10 clients
+  const topCli = [...D.clients].filter(c=>cFat(c)>0).sort((a,b)=>cFat(b)-cFat(a)).slice(0,10);
+  const cliHtml = topCli.map(c=>`
+    <div class="hrow">
+      <div class="hrow-top">
+        <div class="hrow-left">
+          <div class="hrow-name">${c.name}</div>
+          <div class="hrow-sub">${c.city||''} · Mg <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span></div>
+        </div>
+        <div class="hrow-right">
+          <div class="hrow-val" style="color:var(--primary)">${ff(cFat(c))}</div>
+          <div class="hrow-2nd">Proj ${fk(c.proj)}</div>
+        </div>
+      </div>
+      <div class="hbar"><div class="hbar-f" style="width:${(cFat(c)/cFat(topCli[0])*100).toFixed(0)}%;background:${mcol(c.mg)}"></div></div>
+    </div>`).join('');
+
+  // Top 10 categories
+  const topCat = [...D.cats].sort((a,b)=>catCur(b)-catCur(a)).slice(0,10);
+  const catHtml = topCat.map(c=>`
+    <div class="hrow">
+      <div class="hrow-top">
+        <div class="hrow-left">
+          <div class="hrow-name">${c.name}</div>
+          <div class="hrow-sub">Margem <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span></div>
+        </div>
+        <div class="hrow-right">
+          <div class="hrow-val" style="color:var(--primary)">${ff(catCur(c))}</div>
+          <div class="hrow-2nd">Total ${fk(c.total)}</div>
+        </div>
+      </div>
+      <div class="hbar"><div class="hbar-f" style="width:${(catCur(c)/catCur(topCat[0])*100).toFixed(0)}%;background:${mcol(c.mg)}"></div></div>
+    </div>`).join('');
+
+  document.getElementById('t-inicio').innerHTML = `
+
+    <!-- META DO MÊS -->
+    <div class="card ${cls==='g'?'hi':cls==='y'?'wa':'da'}">
+      <div class="ctitle">🎯 Meta de ${D.curMonth}/2026</div>
+      <div class="ring-wrap">
+        <div class="ring" style="--pct:${Math.min(pct,100).toFixed(1)};--rc:${rcol}">
+          <div class="ring-in">
+            <span class="ring-pct" style="color:${rcol}">${pct.toFixed(0)}%</span>
+            <span class="ring-lbl">atingido</span>
+          </div>
+        </div>
+        <div class="ring-right">
+          <div class="r-fat" style="color:${rcol}">${ff(cur.fat)}</div>
+          <div class="r-meta">Meta: ${ff(cur.meta)}</div>
+          <div class="r-proj">Projeção: <strong style="color:${pcls(cur.meta>0?cur.proj/cur.meta*100:0)==='g'?'var(--primary)':'var(--warn)'}">${ff(cur.proj)}</strong></div>
+          <div style="margin-top:7px">${gap>0?`<span class="badge r">Faltam ${ff(gap)}</span>`:`<span class="badge g">✓ Meta atingida!</span>`}</div>
+        </div>
+      </div>
+      <div class="pbar" style="margin-bottom:${gap>0?'10px':'0'}">
+        <div class="pfill ${cls}" style="width:${Math.min(pct,100).toFixed(1)}%"></div>
+      </div>
+      ${gap>0&&dL>0?`
+      <div class="irow">
+        <div class="icol"><div class="icol-lbl">Precisa/dia</div><div class="icol-val" style="color:var(--warn)">${fk(gap/dL)}</div></div>
+        <div class="icol"><div class="icol-lbl">Atual/dia</div><div class="icol-val" style="color:var(--primary)">${fk(cur.medDia)}</div></div>
+        <div class="icol"><div class="icol-lbl">Dias rest.</div><div class="icol-val" style="color:var(--blue)">${dL}</div></div>
+      </div>`:''}
+    </div>
+
+    <!-- KPIs -->
+    <div class="kgrid">
+      <div class="kcard">
+        <div class="klbl">Margem ${D.curMonth}</div>
+        <div class="kval" style="color:${mcol(cur.mg||0)}">${(cur.mg||0).toFixed(1)}%</div>
+        <div class="ksub">Acumulado: ${D.ating}%</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">vs ${prev.month||'Ant.'}</div>
+        <div class="kval" style="color:${varP!==null?(varP>=0?'var(--primary)':'var(--danger)'):'var(--muted)'}">
+          ${varP!==null?(varP>=0?'▲':'▼')+Math.abs(varP).toFixed(1)+'%':'—'}
+        </div>
+        <div class="ksub">${prev.fat?ff(prev.fat):'—'}</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Acumulado 2026</div>
+        <div class="kval" style="color:${pcls(totPct)==='g'?'var(--primary)':'var(--warn)'}">${fk(totFat)}</div>
+        <div class="ksub">${totPct.toFixed(1)}% das metas</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Devolução ${D.curMonth}</div>
+        <div class="kval" style="color:var(--danger)">${fk(cur.dev||0)}</div>
+        <div class="ksub">${cur.fat>0?((cur.dev||0)/cur.fat*100).toFixed(1)+'% do fat.':''}</div>
+      </div>
+    </div>
+
+    <!-- Evolução -->
+    <div class="card">
+      <div class="ctitle">📈 Evolução de Faturamento</div>
+      <div class="vchart">${bars}</div>
+    </div>
+
+    <!-- Devoluções por Mês -->
+    <div id="vend-dev-card"></div>
+
+    ${topCli.length?`
+    <!-- Top Clientes -->
+    <div class="card">
+      <div class="ctitle">👥 Top Clientes — ${D.curMonth}</div>
+      ${cliHtml}
+    </div>`:''}
+
+    ${topCat.length?`
+    <!-- Top Categorias -->
+    <div class="card">
+      <div class="ctitle">📦 Top Categorias — ${D.curMonth}</div>
+      ${catHtml}
+    </div>`:''}
+  `;
+}
+
+// ══════════════════════════════════════
+// DEVOLUÇÕES VENDEDOR (início)
+// ══════════════════════════════════════
+let vendDevExpanded = null;
+
+function buildVendDevCard() {
+  const devMeses = D.m26.filter(m=>m.dev>0);
+  if (!devMeses.length) return '';
+  const totDev = D.m26.reduce((s,m)=>s+(m.dev||0),0);
+  const maxDev = Math.max(...devMeses.map(m=>m.dev),1);
+
+  const devRows = D.m26.filter(m=>m.dev>0).map(m=>{
+    const pct   = (m.dev/maxDev*100).toFixed(0);
+    const isCur = m.month===D.curMonth;
+    const isExp = vendDevExpanded === m.month;
+    const clis  = (D.devClients && D.devClients[m.month]) || [];
+    const drill = isExp && clis.length ? `
+      <div style="margin-top:8px;padding:8px;background:var(--raised);border-radius:8px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Clientes com devolução</div>
+        ${clis.map(c=>`
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${c.name}</span>
+            <span style="font-weight:700;color:var(--danger);margin-left:8px;flex-shrink:0">${ff(c.dev)}</span>
+          </div>`).join('')}
+      </div>` : '';
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <div style="font-size:11px;font-weight:600;color:${isCur?'var(--primary)':'var(--text)'}">${m.month}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--danger)">${ff(m.dev)}</div>
+      </div>
+      <div class="pbar"><div class="pfill r" style="width:${pct}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">${m.fat>0?(m.dev/m.fat*100).toFixed(1)+'% do faturamento':''}</div>
+      <div onclick="toggleVendDev('${m.month}')" style="margin-top:5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--primary);padding:3px 8px;border:1px solid var(--primary);border-radius:20px;opacity:.8">
+        ${isExp?'▲ Fechar':'▼ Clique e veja os clientes'}
+      </div>
+      ${drill}
+    </div>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="ctitle">↩️ Devoluções por Mês</div>
+    ${devRows}
+  </div>`;
+}
+
+window.toggleVendDev = function(month) {
+  vendDevExpanded = vendDevExpanded === month ? null : month;
+  const el = document.getElementById('vend-dev-card');
+  if (el) el.innerHTML = buildVendDevCard();
+};
+
+// ══════════════════════════════════════
+// TAB 2 — MENSAL
+// ══════════════════════════════════════
+function renderMensal() {
+  const MN = {Jan:'Janeiro',Fev:'Fevereiro',Mar:'Março',Abr:'Abril',Mai:'Maio',Jun:'Junho',Jul:'Julho',Ago:'Agosto',Set:'Setembro',Out:'Outubro',Nov:'Novembro',Dez:'Dezembro'};
+
+  const cards = D.m26.map(m=>{
+    const pct = m.meta>0?m.fat/m.meta*100:0;
+    const cls = pcls(pct);
+    const cur = m.month===D.curMonth;
+    return `
+    <div class="mcard ${cur?'cur':''}">
+      <div class="mcard-head">
+        <div>
+          <div class="mcard-title">${MN[m.month]||m.month} 2026 ${cur?'<span style="font-size:11px;color:var(--primary)"> • atual</span>':''}</div>
+        </div>
+        <span class="badge ${cls}">${pct.toFixed(1)}%</span>
+      </div>
+      <div class="mcard-fat" style="color:${cls==='g'?'var(--primary)':cls==='y'?'var(--warn)':'var(--danger)'}">${ff(m.fat)}</div>
+      <div class="mcard-meta">Meta: ${ff(m.meta)}${cur?' · Projeção: '+ff(m.proj):''}</div>
+      <div class="pbar"><div class="pfill ${cls}" style="width:${Math.min(pct,100).toFixed(1)}%"></div></div>
+      <div class="pills">
+        <span class="pill" style="color:${mcol(m.mg)}">Mg ${m.mg.toFixed(1)}%</span>
+        <span class="pill" style="color:var(--danger)">Dev ${ff(m.dev)}</span>
+        <span class="pill" style="color:var(--blue)">Méd/dia ${fk(m.medDia)}</span>
+        ${m.dev&&m.fat>0?`<span class="pill" style="color:var(--warn)">Dev% ${(m.dev/m.fat*100).toFixed(1)}%</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Totals row
+  const tMeta = D.m26.reduce((s,m)=>s+m.meta,0);
+  const tFat  = D.m26.reduce((s,m)=>s+m.fat,0);
+  const tDev  = D.m26.reduce((s,m)=>s+(m.dev||0),0);
+  const tPct  = tMeta>0?tFat/tMeta*100:0;
+
+  // ── Tabela comparativa 2025 × 2026 ──
+  const MONTHS_ORDER = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  let cmRows = '', tot25=0, tot26=0, totMg25=0, totMg26=0, wtMg25=0, wtMg26=0;
+
+  MONTHS_ORDER.forEach(mon=>{
+    const r26 = D.m26.find(m=>m.month===mon);
+    const r25 = D.m25.find(m=>m.month===mon);
+    if (!r26 && !r25) return;
+    const f26 = r26 ? r26.fat : null;
+    const f25 = r25 ? r25.fat : null;
+    const g26 = r26 ? r26.mg  : null;
+    const g25 = r25 ? r25.mg  : null;
+    if (f25) { tot25 += f25; wtMg25 += f25 * (g25||0); }
+    if (f26) { tot26 += f26; wtMg26 += f26 * (g26||0); }
+    const isCur = mon===D.curMonth;
+    const vf = f25&&f26 ? ((f26-f25)/f25*100) : null;
+    const vm = g25&&g26 ? (g26-g25)           : null;
+    cmRows += `<tr${isCur?' style="background:rgba(0,214,143,.05)"':''}>
+      <td><strong>${mon}</strong>${isCur?' <span style="color:var(--primary);font-size:10px">●</span>':''}</td>
+      <td>${f25?fk(f25):'—'}</td>
+      <td style="color:${g25?mcol(g25):'inherit'}">${g25!==null?g25.toFixed(1)+'%':'—'}</td>
+      <td style="color:${f26?(f25&&f26>=f25?'var(--primary)':'var(--danger)'):'inherit'}">${f26?fk(f26)+(isCur?'*':''):'—'}</td>
+      <td style="color:${g26?mcol(g26):'inherit'}">${g26!==null?g26.toFixed(1)+'%':'—'}</td>
+      <td class="${vf!==null?(vf>=0?'pos':'neg'):''}">${vf!==null?(vf>=0?'+':'')+vf.toFixed(0)+'%':'—'}</td>
+      <td class="${vm!==null?(vm>=0?'pos':'neg'):''}">${vm!==null?(vm>=0?'+':'')+vm.toFixed(1)+'pp':'—'}</td>
+    </tr>`;
+  });
+
+  const vtot  = tot25>0?((tot26-tot25)/tot25*100):null;
+  const mg25a = tot25>0?(wtMg25/tot25):0;
+  const mg26a = tot26>0?(wtMg26/tot26):0;
+  const vmga  = mg25a&&mg26a ? (mg26a-mg25a) : null;
+
+  document.getElementById('t-mensal').innerHTML = `
+    ${cards}
+
+    <!-- Resumo acumulado -->
+    <div class="card">
+      <div class="ctitle">📊 Resumo Acumulado 2026</div>
+      <div class="prow"><span class="plabel">Total Faturado</span><span class="pval" style="color:var(--primary)">${ff(tFat)}</span></div>
+      <div class="prow"><span class="plabel">Total Meta</span><span class="pval">${ff(tMeta)}</span></div>
+      <div class="prow"><span class="plabel">Atingimento</span><span class="pval"><span class="badge ${pcls(tPct)}">${tPct.toFixed(1)}%</span></span></div>
+      <div class="prow"><span class="plabel">Total Devoluções</span><span class="pval" style="color:var(--danger)">${ff(tDev)}</span></div>
+      <div class="prow"><span class="plabel">Dev % s/ Faturado</span><span class="pval" style="color:var(--warn)">${tFat>0?(tDev/tFat*100).toFixed(1)+'%':'—'}</span></div>
+    </div>
+
+    ${D.m25.length?`
+    <!-- 2025 x 2026 TABELA COMPLETA -->
+    <div class="card">
+      <div class="ctitle">🔄 Comparativo 2025 × 2026</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="ctab" style="min-width:380px">
+        <thead>
+          <tr>
+            <th rowspan="2" style="text-align:left">Mês</th>
+            <th colspan="2" style="border-bottom:1px solid var(--border);color:var(--muted)">2025</th>
+            <th colspan="2" style="border-bottom:1px solid var(--border);color:var(--primary)">2026</th>
+            <th colspan="2" style="border-bottom:1px solid var(--border)">Variação</th>
+          </tr>
+          <tr>
+            <th>Fat.</th><th>Mg%</th>
+            <th style="color:var(--primary)">Fat.</th><th style="color:var(--primary)">Mg%</th>
+            <th>Fat%</th><th>Mg</th>
+          </tr>
+        </thead>
+        <tbody>${cmRows}</tbody>
+        <tfoot>
+          <tr class="total">
+            <td>Total</td>
+            <td>${fk(tot25)}</td>
+            <td style="color:${mcol(mg25a)}">${mg25a.toFixed(1)}%</td>
+            <td style="color:var(--primary)">${fk(tot26)}</td>
+            <td style="color:${mcol(mg26a)}">${mg26a.toFixed(1)}%</td>
+            <td class="${vtot!==null?(vtot>=0?'pos':'neg'):''}">${vtot!==null?(vtot>=0?'+':'')+vtot.toFixed(1)+'%':'—'}</td>
+            <td class="${vmga!==null?(vmga>=0?'pos':'neg'):''}">${vmga!==null?(vmga>=0?'+':'')+vmga.toFixed(1)+'pp':'—'}</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+      <p style="font-size:10px;color:var(--muted);margin-top:8px">* Mês atual: projetado para ${D.daysTotal} dias · pp = pontos percentuais de margem</p>
+    </div>`:''
+  }`;
+}
+
+// ══════════════════════════════════════
+// TAB 3 — CLIENTES
+// ══════════════════════════════════════
+function renderClientes() {
+  const doRender = () => {
+    const mKeys = D.m26.map(m=>m.month.toLowerCase());
+    const curKey = D.curMonth.toLowerCase();
+    const gapN  = D.clients.filter(c =>
+      (c[curKey]||0)===0 && mKeys.some(mk=>(c[mk]||0)>0)
+    ).length;
+
+    let list = [...D.clients].sort((a,b)=>cFat(b)-cFat(a));
+    if (clientFilter==='gap') list = list.filter(c =>
+      (c[curKey]||0)===0 && mKeys.some(mk=>(c[mk]||0)>0)
+    );
+
+    const maxM = Math.max(...list.map(c=>cFat(c)),1);
+
+    const rows = list.map((c,i)=>{
+      const rk = i===0?'r1':i===1?'r2':i===2?'r3':'rn';
+      const cf = cFat(c), cp = cPrev(c);
+      const inativo = cf===0;
+      const missMes = mKeys.filter(mk=>(c[mk]||0)===0&&mKeys.some(m2=>(c[m2]||0)>0));
+      const vals = mKeys.map(mk=>c[mk]||0);
+      const maxV = Math.max(...vals,1);
+      const W=280, H=44, pad=4;
+      const pts = vals.map((v,i)=>{
+        const x = pad + i*(W-pad*2)/(Math.max(vals.length-1,1));
+        const y = H - pad - (v/maxV)*(H-pad*2);
+        return [x,y];
+      });
+      const polyline = pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+      const dots = pts.map(([x,y],i)=>{
+        const mk = mKeys[i];
+        const v  = vals[i];
+        const isCur = mk===curKey;
+        const col = v===0?'#FF5252':isCur?'var(--primary)':'var(--warn)';
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur?4:3}" fill="${col}" stroke="var(--surf)" stroke-width="1.5"/>
+          <text x="${x.toFixed(1)}" y="${(y-7).toFixed(1)}" text-anchor="middle" font-size="7" fill="${col}" font-weight="700">${v>0?fk(v):''}</text>
+          <text x="${x.toFixed(1)}" y="${(H+1).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCur?'var(--primary)':'rgba(255,255,255,.4)'}">${mk.charAt(0).toUpperCase()+mk.slice(1)}</text>`;
+      }).join('');
+      const tabelaMeses = `<svg viewBox="0 0 ${W} ${H+10}" style="width:100%;overflow:visible">
+        <polyline points="${polyline}" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        ${dots}
+      </svg>`;
+      return `
+      <div class="hrow">
+        <div class="hrow-top">
+          <div style="display:flex;align-items:flex-start;gap:8px;min-width:0">
+            <div class="rnk ${rk}" style="margin-top:2px">${i+1}</div>
+            <div class="hrow-left">
+              <div class="hrow-name">${c.name}</div>
+              <div class="hrow-sub">${c.city?c.city+' · ':''}Mg <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span>${c.dev>0?` · Dev <span style="color:var(--danger);font-weight:700">${ff(c.dev)}</span>`:''}
+                ${inativo?'<span class="badge r" style="margin-left:4px">Inativo</span>':''}
+                ${!inativo&&missMes.length?`<span class="badge r" style="margin-left:4px">Sem: ${missMes.map(m=>m.charAt(0).toUpperCase()+m.slice(1)).join(', ')}</span>`:''}
+              </div>
+            </div>
+          </div>
+          <div class="hrow-right">
+            <div class="hrow-val" style="color:${inativo?'var(--muted)':'var(--primary)'}">
+              ${inativo?'—':ff(cf)}
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+          ${tabelaMeses}
+        </div>
+      </div>`;
+    }).join('') || '<p style="color:var(--muted);padding:20px;text-align:center">Nenhum cliente</p>';
+
+    document.getElementById('t-clientes').innerHTML = `
+      <div class="filters">
+        <button class="fbtn ${clientFilter==='all'?'on':''}" onclick="setCliFilter('all')">Todos (${D.clients.length})</button>
+        <button class="fbtn ${clientFilter==='gap'?'on-r':''}" onclick="setCliFilter('gap')" style="${clientFilter==='gap'?'border-color:var(--warn);background:rgba(255,171,0,.1);color:var(--warn)':''}">Sem compra em ${D.curMonth} (${gapN})</button>
+      </div>
+      <div class="card">${rows}</div>
+    `;
+  };
+  window.setCliFilter = f => { clientFilter=f; doRender(); };
+  doRender();
+}
+
+// ══════════════════════════════════════
+// TAB 4 — CATEGORIAS
+// ══════════════════════════════════════
+function renderCats() {
+  if (!D.cats.length) {
+    document.getElementById('t-cats').innerHTML='<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+  const sorted  = [...D.cats].sort((a,b)=>b.total-a.total);
+  const maxTot  = Math.max(...sorted.map(c=>c.total),1);
+  const maxMai  = Math.max(...sorted.map(c=>catCur(c)),1);
+  const totAll  = sorted.reduce((s,c)=>s+c.total,0);
+  const maiAll  = sorted.reduce((s,c)=>s+catCur(c),0);
+
+  const rows = sorted.map((c,i)=>{
+    const rk = i===0?'r1':i===1?'r2':i===2?'r3':'rn';
+    const share  = (c.total/totAll*100).toFixed(1);
+    const barTot = (c.total/maxTot*100).toFixed(0);
+    const barMai = (catCur(c)/maxMai*100).toFixed(0);
+    return `
+    <div class="hrow">
+      <div class="hrow-top">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="rnk ${rk}">${i+1}</div>
+          <div>
+            <div class="hrow-name">${c.name}</div>
+            <div class="hrow-sub">${share}% do total · Mg <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span></div>
+          </div>
+        </div>
+        <div class="hrow-right">
+          <div class="hrow-val" style="color:var(--primary)">${fk(c.total)}</div>
+          <div class="hrow-2nd">${D.curMonth}: ${fk(catCur(c))}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="hbar"><div class="hbar-f" style="width:${barTot}%;background:${mcol(c.mg)}"></div></div>
+        <div class="hbar" style="height:3px"><div class="hbar-f" style="width:${barMai}%;background:rgba(91,155,245,.55)"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('t-cats').innerHTML = `
+    <div class="kgrid" style="margin-bottom:12px">
+      <div class="kcard">
+        <div class="klbl">Acumulado 2026</div>
+        <div class="kval" style="color:var(--primary)">${fk(totAll)}</div>
+        <div class="ksub">${sorted.length} categorias</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">${D.curMonth} (top cats)</div>
+        <div class="kval" style="color:var(--blue)">${fk(maiAll)}</div>
+        <div class="ksub">mês atual</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:16px;margin-bottom:10px;font-size:10px;color:var(--muted)">
+        <span>▬ Acumulado</span>
+        <span style="color:rgba(91,155,245,.7)">▬ ${D.curMonth}</span>
+      </div>
+      ${rows}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════
+// TAB 5 — PROJEÇÃO
+// ══════════════════════════════════════
+function renderDash() {
+  const tot26    = D.m26.reduce((s,m)=>s+m.fat,0);
+  const totMeta  = D.m26.reduce((s,m)=>s+m.meta,0);
+  const ating    = totMeta>0 ? tot26/totMeta*100 : 0;
+  const totDev   = D.m26.reduce((s,m)=>s+(m.dev||0),0);
+  const cur      = D.m26.find(m=>m.month===D.curMonth)||{};
+  const mgMedia  = tot26>0 ? D.m26.reduce((s,m)=>s+m.fat*(m.mg||0),0)/tot26 : 0;
+
+  const done  = D.m26.filter(m=>m.month!==D.curMonth);
+  const tDone = done.reduce((s,m)=>s+m.fat,0);
+  const avgM  = done.length>0 ? tDone/done.length : 0;
+  const projA = tDone+(cur.proj||cur.fat||0)+avgM*Math.max(12-D.m26.length,0);
+
+  const matched25 = D.m25.filter(m25=>D.m26.find(m26=>m26.month===m25.month));
+  const tot25     = matched25.reduce((s,m)=>s+m.fat,0);
+  const var2526   = tot25>0 ? ((tot26-tot25)/tot25*100) : null;
+
+  // ── Gráfico evolução 2026 ─────────────────────────────────────────────────
+  const maxBar = Math.max(...D.m26.map(m=>Math.max(m.fat,m.meta||0)),1);
+  const bars2026 = D.m26.map(m=>{
+    const isCur = m.month===D.curMonth;
+    const hFat  = Math.round(m.fat/maxBar*90);
+    const hMeta = Math.round((m.meta||0)/maxBar*90);
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div style="font-size:8px;color:${isCur?'var(--primary)':'var(--warn)'};font-weight:700;white-space:nowrap">${fk(m.fat)}</div>
+      <div style="position:relative;width:100%;display:flex;align-items:flex-end;height:90px">
+        <div style="width:100%;height:${hFat}px;background:${isCur?'var(--primary)':'var(--warn)'};border-radius:3px 3px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:3px;overflow:hidden">
+          ${hFat>16?`<span style="font-size:7px;font-weight:700;color:#000;white-space:nowrap">${fk(m.meta||0)}</span>`:''}
+        </div>
+        <div style="position:absolute;bottom:${hMeta}px;left:0;right:0;height:2px;background:rgba(255,255,255,.45);border-radius:2px"></div>
+      </div>
+      <div style="font-size:9px;color:${isCur?'var(--primary)':'var(--muted)'};font-weight:${isCur?'700':'400'}">${m.month}</div>
+    </div>`;
+  }).join('');
+
+  // ── Comparativo 2025 vs 2026 ──────────────────────────────────────────────
+  const max2526 = Math.max(...D.m26.map(m=>m.fat),...D.m25.filter(m=>D.m26.find(x=>x.month===m.month)).map(m=>m.fat),1);
+  const bars2526 = D.m26.map(m=>{
+    const m25  = D.m25.find(x=>x.month===m.month)||{fat:0};
+    const h26  = Math.round(m.fat/max2526*70);
+    const h25  = Math.round(m25.fat/max2526*70);
+    const isCur = m.month===D.curMonth;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div style="display:flex;gap:2px;width:100%">
+        <div style="flex:1;font-size:7px;color:rgba(91,155,245,.9);text-align:center;font-weight:600;white-space:nowrap;overflow:hidden">${fk(m25.fat)}</div>
+        <div style="flex:1;font-size:7px;color:${isCur?'var(--primary)':'var(--warn)'};text-align:center;font-weight:600;white-space:nowrap;overflow:hidden">${fk(m.fat)}</div>
+      </div>
+      <div style="width:100%;display:flex;align-items:flex-end;gap:1px;height:70px">
+        <div style="flex:1;height:${h25}px;background:rgba(91,155,245,.5);border-radius:2px 2px 0 0"></div>
+        <div style="flex:1;height:${h26}px;background:${isCur?'var(--primary)':'var(--warn)'};border-radius:2px 2px 0 0"></div>
+      </div>
+      <div style="font-size:8px;color:${isCur?'var(--primary)':'var(--muted)'};font-weight:${isCur?'700':'400'}">${m.month}</div>
+    </div>`;
+  }).join('');
+
+  // ── Donut categorias ──────────────────────────────────────────────────────
+  const COLORS = ['#00D68F','#5B9BF5','#F6B54A','#FF5252','#C084FC','#38BDF8','#FB923C','#A3E635','#E879F9','#FCD34D','#64748b'];
+  const topCats   = [...D.cats].sort((a,b)=>b.total-a.total).slice(0,10);
+  const totalCats = D.cats.reduce((s,c)=>s+c.total,0);
+  const otherTot  = totalCats-topCats.reduce((s,c)=>s+c.total,0);
+  const donutList = [...topCats,...(otherTot>0?[{name:'Outros',total:otherTot,mg:0}]:[])];
+  let acc=0;
+  const segs = donutList.map((c,i)=>{
+    const pct=totalCats>0?c.total/totalCats*100:0;
+    const s={pct,color:COLORS[i]||'#64748b',start:acc}; acc+=pct; return s;
+  });
+  const donutGrad = segs.map(s=>`${s.color} ${s.start.toFixed(1)}% ${(s.start+s.pct).toFixed(1)}%`).join(',');
+  const catLegend = donutList.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${COLORS[i]};flex-shrink:0"></div>
+      <div style="flex:1;font-size:11px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div>
+      <div style="font-size:11px;color:var(--muted)">${totalCats>0?(c.total/totalCats*100).toFixed(1):0}%</div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary)">${fk(c.total)}</div>
+    </div>`).join('');
+
+  // ── Top 10 clientes ───────────────────────────────────────────────────────
+  const top10 = [...D.clients].sort((a,b)=>cFat(b)-cFat(a)).slice(0,10);
+  const maxCli = Math.max(...top10.map(c=>cFat(c)),1);
+  const cliRows = top10.map((c,i)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <div style="font-size:11px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i+1}. ${c.name}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--primary);margin-left:8px">${ff(cFat(c))}</div>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${(cFat(c)/maxCli*100).toFixed(0)}%;background:${mcol(c.mg)};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">Mg <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span>${c.dev>0?` · Dev ${fk(c.dev)}`:''}${c.city?' · '+c.city:''}</div>
+    </div>`).join('');
+
+  document.getElementById('t-dash').innerHTML = `
+    <div class="card">
+      <div class="ctitle">📊 Panorama — Jan–${D.curMonth}/2026</div>
+      <div class="kgrid">
+        <div class="kcard">
+          <div class="klbl">Fat. Acumulado</div>
+          <div class="kval" style="color:var(--primary)">${fk(tot26)}</div>
+          <div class="ksub">Jan–${D.curMonth}</div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Atingimento</div>
+          <div class="kval"><span class="badge ${pcls(ating)}">${ating.toFixed(1)}%</span></div>
+          <div class="ksub">meta ${fk(totMeta)}</div>
+        </div>
+
+        <div class="kcard">
+          <div class="klbl">Devolução Total</div>
+          <div class="kval" style="color:var(--danger)">${fk(totDev)}</div>
+          <div class="ksub">${tot26>0?(totDev/tot26*100).toFixed(1)+'% do fat.':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div class="kcard" style="flex:1;text-align:center">
+          <div class="klbl">Projeção Anual</div>
+          <div class="kval" style="color:var(--primary)">${fk(projA)}</div>
+        </div>
+        ${var2526!==null?`<div class="kcard" style="flex:1;text-align:center">
+          <div class="klbl">vs 2025</div>
+          <div class="kval"><span class="badge ${var2526>=0?'g':'r'}">${var2526>=0?'▲ +':'▼ '}${Math.abs(var2526).toFixed(1)}%</span></div>
+        </div>`:''}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">📈 Evolução Mensal 2026</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--primary);border-radius:2px;margin-right:3px"></span>Mês atual</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--warn);border-radius:2px;margin-right:3px"></span>Anteriores</span>
+        <span><span style="display:inline-block;width:20px;height:2px;background:rgba(255,255,255,.45);border-radius:2px;margin-right:3px;vertical-align:middle"></span>Meta</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:112px">${bars2026}</div>
+    </div>
+
+    ${D.m25.length?`<div class="card">
+      <div class="ctitle">🔄 Comparativo 2025 vs 2026</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px">
+        <span><span style="display:inline-block;width:8px;height:8px;background:rgba(91,155,245,.5);border-radius:2px;margin-right:3px"></span>2025</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--primary);border-radius:2px;margin-right:3px"></span>2026</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:86px">${bars2526}</div>
+    </div>`:''}
+
+    <div class="card">
+      <div class="ctitle">📦 Distribuição por Categoria</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:90px;height:90px;border-radius:50%;background:conic-gradient(${donutGrad});flex-shrink:0;position:relative">
+          <div style="position:absolute;inset:18px;border-radius:50%;background:var(--surf)"></div>
+        </div>
+        <div style="flex:1;min-width:0">${catLegend}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">👥 Top 10 Clientes — ${D.curMonth}</div>
+      ${cliRows}
+    </div>
+  `;
+}
+
+
+// ╔══════════════════════════════════════════╗
+// ║  NAVIGATION                              ║
+// ╚══════════════════════════════════════════╝
+const TABS = ['inicio','mensal','clientes','cats','dash'];
+
+function goTab(tab, btn) {
+  TABS.forEach(t => {
+    document.getElementById('t-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  if (btn) {
+    document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+}
+
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function ov(v) { document.getElementById('ov').classList.toggle('on',v); }
+
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — NAVEGAÇÃO                   ║
+// ╚══════════════════════════════════════════╝
+const DIR_TABS = ['geral','vend','metacat','cid','cli'];
+let dirVendExpanded = null;
+let vendCatExpMap   = {};
+let vendCliExpMap   = {};
+
+function goTabDir(tab, btn) {
+  DIR_TABS.forEach(t => {
+    document.getElementById('dt-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#dir-app .nb').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (tab === 'geral')   renderDirGeral();
+  if (tab === 'vend')    renderDirVend();
+  if (tab === 'metacat') renderDirMetaCat();
+  if (tab === 'cid')     renderDirCid();
+  if (tab === 'cli')     renderDirCli();
+}
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — MENU 1: VISÃO GERAL         ║
+// ╚══════════════════════════════════════════╝
+function renderDirGeral() {
+  const DD = DIRECTOR_DATA;
+  if (!DD || !DD.m26 || !DD.m26.length) {
+    document.getElementById('dt-geral').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+  const cur     = DD.m26[DD.m26.length-1];
+  const totFat  = DD.m26.reduce((s,m)=>s+m.fat,0);
+  const totMeta = DD.m26.reduce((s,m)=>s+m.meta,0);
+  const totDev  = DD.m26.reduce((s,m)=>s+(m.dev||0),0);
+  const ating   = totMeta>0 ? totFat/totMeta*100 : 0;
+  const mgMedia = totFat>0 ? DD.m26.reduce((s,m)=>s+m.fat*(m.mg||0),0)/totFat : 0;
+  const meses26 = new Set(DD.m26.map(m=>m.month));
+  const tot25   = DD.m25 ? DD.m25.filter(m=>meses26.has(m.month)).reduce((s,m)=>s+m.fat,0) : 0;
+  const var2526 = tot25>0 ? ((totFat-tot25)/tot25*100) : null;
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  const curPct  = cur.meta>0 ? Math.min(cur.fat/cur.meta*100, 100) : 0;
+  const ringCol  = '#F6B54A';
+  const ringGrad = `conic-gradient(#F6B54A ${curPct.toFixed(1)}%, var(--border) 0)`;
+  const kpis = `
+  <div class="card">
+    <div class="ctitle">📊 Consolidado Jan–${cur.month}/2026</div>
+
+    <!-- Meta x Faturamento (anel) -->
+    <div style="display:flex;align-items:center;gap:18px;padding:14px;background:var(--raised);border-radius:12px;margin-bottom:12px">
+      <div style="position:relative;width:96px;height:96px;border-radius:50%;background:${ringGrad};flex-shrink:0">
+        <div style="position:absolute;inset:14px;border-radius:50%;background:var(--surf);display:flex;align-items:center;justify-content:center">
+          <span style="font-size:13px;font-weight:800;color:${ringCol}">${curPct.toFixed(0)}%</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px">Meta ${cur.month} × Faturamento</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--muted)">Meta</span>
+          <span style="font-weight:700;color:#00D68F">${ff(cur.meta||0)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--muted)">Fat. atual</span>
+          <span style="font-weight:700;color:#F6B54A">${ff(cur.fat||0)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span style="color:var(--muted)">Gap</span>
+          <span style="font-weight:700;color:#FF5252">${cur.meta>cur.fat?'−'+ff(cur.meta-cur.fat):'✓ +'+ff(cur.fat-cur.meta)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fat. Acumulado 2026 e 2025 -->
+    <div class="kgrid">
+      <div class="kcard">
+        <div class="klbl">Fat. Acumulado 2026</div>
+        <div class="kval" style="color:var(--primary)">${fk(totFat)}</div>
+        <div class="ksub">Jan–${cur.month}</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Fat. Acumulado 2025</div>
+        <div class="kval" style="color:rgba(91,155,245,.9)">${tot25>0?fk(tot25):'—'}</div>
+        <div class="ksub">mesmo período${var2526!==null?` · <span class="badge ${var2526>=0?'g':'r'}" style="padding:1px 5px;font-size:9px">${var2526>=0?'▲ +':'▼ '}${Math.abs(var2526).toFixed(1)}%</span>`:''}</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Margem ${cur.month}</div>
+        <div class="kval" style="color:${mcol(cur.mg||0)}">${(cur.mg||0).toFixed(1)}%</div>
+        <div class="ksub">mês atual</div>
+      </div>
+      <div class="kcard">
+        <div class="klbl">Clientes Atendidos</div>
+        <div class="kval" style="color:var(--primary)">${DD.totalClients||0}</div>
+        <div class="ksub">Jan–${cur.month}/2026</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Comparativo mensal — gráfico de linhas fat 2026 + meta + fat 2025 ───────
+  let comp26Svg = '';
+  (function(){
+    const W=300, H=110, pad=12;
+    const vals25  = DD.m26.map(m=>{ const r=DD.m25?DD.m25.find(x=>x.month===m.month):null; return r?r.fat:0; });
+    const metas25 = DD.m26.map(m=>{ const r=DD.m25?DD.m25.find(x=>x.month===m.month):null; return r?r.meta||0:0; });
+    const vals26  = DD.m26.map(m=>m.fat);
+    const metas26 = DD.m26.map(m=>m.meta||0);
+    const maxV    = Math.max(...vals26,...metas26,...vals25,...metas25,1);
+    const px = (j)=> pad + j*(W-pad*2)/(Math.max(DD.m26.length-1,1));
+    const py = (v)=> H - pad - (v/maxV)*(H-pad*2);
+
+    const pts26    = DD.m26.map((m,j)=>[px(j), py(m.fat)]);
+    const pts25    = vals25.map((v,j)=>[px(j), py(v)]);
+    const ptsMeta26= metas26.map((v,j)=>[px(j), py(v)]);
+    const ptsMeta25= metas25.map((v,j)=>[px(j), py(v)]);
+
+    const poly26    = pts26.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const poly25    = pts25.filter((_,j)=>vals25[j]>0).map((_,i)=>{ const j=vals25.map((v,k)=>v>0?k:-1).filter(k=>k>=0)[i]; return pts25[j][0].toFixed(1)+','+pts25[j][1].toFixed(1); }).join(' ');
+    const polyMeta26= ptsMeta26.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const polyMeta25= ptsMeta25.filter((_,j)=>metas25[j]>0).map((_,i)=>{ const j=metas25.map((v,k)=>v>0?k:-1).filter(k=>k>=0)[i]; return ptsMeta25[j][0].toFixed(1)+','+ptsMeta25[j][1].toFixed(1); }).join(' ');
+    const area26    = `${pts26[0][0].toFixed(1)},${H} `+poly26+` ${pts26[pts26.length-1][0].toFixed(1)},${H}`;
+
+    const dots = DD.m26.map((m,j)=>{
+      const [x,y26]  = pts26[j];
+      const [,y25]   = pts25[j];
+      const [,ym26]  = ptsMeta26[j];
+      const [,ym25]  = ptsMeta25[j];
+      const isCur    = m.month===DD.curMonth;
+      const col26    = isCur?'var(--primary)':'var(--warn)';
+      const has25    = vals25[j]>0;
+      const hasMeta25= metas25[j]>0;
+      return `
+        <circle cx="${x.toFixed(1)}" cy="${y26.toFixed(1)}" r="${isCur?4:2.5}" fill="${col26}" stroke="var(--surf)" stroke-width="1.5"/>
+        <text x="${x.toFixed(1)}" y="${(y26-7).toFixed(1)}" text-anchor="middle" font-size="7" fill="${col26}" font-weight="${isCur?'800':'600'}">${fk(m.fat)}</text>
+        ${has25?`<circle cx="${x.toFixed(1)}" cy="${y25.toFixed(1)}" r="2" fill="rgba(91,155,245,.9)" stroke="var(--surf)" stroke-width="1"/>
+        <text x="${x.toFixed(1)}" y="${(y25+14).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="rgba(91,155,245,.75)" font-weight="600">${fk(vals25[j])}</text>`:''}
+        <text x="${x.toFixed(1)}" y="${(H+10).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCur?'var(--primary)':'rgba(255,255,255,.35)'}" font-weight="${isCur?'700':'400'}">${m.month}</text>`;
+    }).join('');
+
+    const has25Fat  = vals25.some(v=>v>0);
+    const has25Meta = metas25.some(v=>v>0);
+    const svg = `<svg viewBox="0 0 ${W} ${H+14}" style="width:100%;overflow:visible">
+      <defs><linearGradient id="cg26" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+      </linearGradient></defs>
+      <polygon points="${area26}" fill="url(#cg26)"/>
+      ${has25Fat && poly25?`<polyline points="${poly25}" fill="none" stroke="rgba(91,155,245,.8)" stroke-width="2" stroke-linejoin="round"/>`:''}
+      ${has25Meta && polyMeta25?`<polyline points="${polyMeta25}" fill="none" stroke="rgba(255,200,0,.45)" stroke-width="1.5" stroke-dasharray="4,3" stroke-linejoin="round"/>`:''}
+      <polyline points="${polyMeta26}" fill="none" stroke="rgba(255,200,0,.8)" stroke-width="1.5" stroke-dasharray="4,3" stroke-linejoin="round"/>
+      <polyline points="${poly26}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round"/>
+      ${dots}
+    </svg>`;
+
+    const leg25Fat  = has25Fat  ? `<span><span style="display:inline-block;width:16px;height:2px;background:rgba(91,155,245,.8);margin-right:4px;vertical-align:middle"></span>Fat. 2025</span>` : '';
+    const leg25Meta = has25Meta ? `<span><span style="display:inline-block;width:16px;height:2px;background:rgba(255,200,0,.45);border-top:2px dashed rgba(255,200,0,.45);margin-right:4px;vertical-align:middle"></span>Meta 2025</span>` : '';
+    comp26Svg = `
+    <div class="card">
+      <div class="ctitle">📈 Evolução Mensal FAT 2025 vs 2026</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:16px;height:2.5px;background:var(--primary);margin-right:4px;vertical-align:middle"></span>Fat. 2026</span>
+        ${leg25Fat}
+        <span><span style="display:inline-block;width:16px;height:2px;background:rgba(255,200,0,.8);border-top:2px dashed rgba(255,200,0,.8);margin-right:4px;vertical-align:middle"></span>Meta 2026</span>
+        ${leg25Meta}
+      </div>
+      ${svg}
+    </div>`;
+  })();
+  const comp26 = comp26Svg;
+  const comp2526 = '';
+
+  // ── Devoluções por mês ────────────────────────────────────────────────────
+  let devExpanded = null;
+  const maxDev = Math.max(...DD.m26.map(m=>m.dev||0),1);
+
+  function buildDevCard() {
+    const devRows = DD.m26.filter(m=>m.dev>0).map(m=>{
+      const pct   = (m.dev/maxDev*100).toFixed(0);
+      const isCur = m.month===DD.curMonth;
+      const isExp = devExpanded === m.month;
+      const clis  = (DD.devClients && DD.devClients[m.month]) || [];
+      const drill = isExp && clis.length ? `
+        <div style="margin-top:8px;padding:8px;background:var(--raised);border-radius:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Clientes com devolução</div>
+          ${clis.map(c=>`
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${c.name}</span>
+              <span style="font-weight:700;color:var(--danger);margin-left:8px;flex-shrink:0">${ff(c.dev)}</span>
+            </div>`).join('')}
+        </div>` : '';
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <div style="font-size:11px;font-weight:600;color:${isCur?'var(--primary)':'var(--text)'}">${m.month}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--danger)">${ff(m.dev)}</div>
+        </div>
+        <div class="pbar"><div class="pfill r" style="width:${pct}%"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${m.fat>0?(m.dev/m.fat*100).toFixed(1)+'% do faturamento':''}</div>
+        <div onclick="toggleDev('${m.month}')" style="margin-top:5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--primary);padding:3px 8px;border:1px solid var(--primary);border-radius:20px;opacity:.8">
+          ${isExp?'▲ Fechar':'▼ Clique e veja os clientes'}
+        </div>
+        ${drill}
+      </div>`;
+    }).join('') || '<p style="color:var(--muted);font-size:12px">Sem devoluções</p>';
+
+    return `<div class="card">
+      <div class="ctitle">↩️ Devoluções por Mês</div>
+      ${devRows}
+    </div>`;
+  }
+
+  window.toggleDev = function(month) {
+    devExpanded = devExpanded === month ? null : month;
+    const el = document.getElementById('dev-card');
+    if (el) el.outerHTML = '<div id="dev-card">' + buildDevCard() + '</div>';
+  };
+
+  const devCard = '<div id="dev-card">' + buildDevCard() + '</div>';
+
+  // ── Pizza de categorias ───────────────────────────────────────────────────
+  const COLORS = ['#00D68F','#5B9BF5','#F6B54A','#FF5252','#C084FC','#38BDF8','#FB923C','#A3E635','#E879F9','#FCD34D','#64748b'];
+  const topCats   = [...DD.categories].slice(0,10);
+  const totalCats = DD.categories.reduce((s,c)=>s+c.total,0);
+  const otherTot  = totalCats - topCats.reduce((s,c)=>s+c.total,0);
+  const donutList = [...topCats,...(otherTot>0?[{name:'Outros',total:otherTot,mg:0,curFat:0}]:[])];
+  let acc=0;
+  const segs = donutList.map((c,i)=>{
+    const pct=totalCats>0?c.total/totalCats*100:0;
+    const s={pct,color:COLORS[i]||'#64748b',start:acc}; acc+=pct; return s;
+  });
+  const donutGrad = segs.map(s=>`${s.color} ${s.start.toFixed(1)}% ${(s.start+s.pct).toFixed(1)}%`).join(',');
+  const catLegend = donutList.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${COLORS[i]||'#64748b'};flex-shrink:0"></div>
+      <div style="flex:1;font-size:10px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</div>
+      <div style="display:flex;flex-direction:column;align-items:center;min-width:36px">
+        <span style="font-size:8px;color:var(--muted);margin-bottom:1px">Rep.%</span>
+        <span style="font-size:10px;font-weight:700;color:#fb923c">${totalCats>0?(c.total/totalCats*100).toFixed(1):0}%</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;min-width:28px">
+        <span style="font-size:8px;color:var(--muted);margin-bottom:1px">Mg%</span>
+        <span style="font-size:10px;font-weight:700;color:${mcol(c.mg)}">${c.mg?c.mg.toFixed(1)+'%':'—'}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;min-width:42px">
+        <span style="font-size:8px;color:var(--muted);margin-bottom:1px">Fat.</span>
+        <span style="font-size:10px;font-weight:700;color:#f5c400">${fk(c.total)}</span>
+      </div>
+    </div>`).join('');
+
+  const pizzaCard = `
+  <div class="card">
+    <div class="ctitle">📦 Acumulado Categorias</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+      <div style="width:90px;height:90px;border-radius:50%;background:conic-gradient(${donutGrad});flex-shrink:0;position:relative">
+        <div style="position:absolute;inset:18px;border-radius:50%;background:var(--surf);display:flex;align-items:center;justify-content:center">
+          <span style="font-size:9px;color:var(--muted);text-align:center">Total<br>${fk(totalCats)}</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0">
+        ${catLegend}
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('dt-geral').innerHTML = kpis + comp26 + comp2526 + devCard + pizzaCard;
+}
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — MENU: CLIENTES              ║
+// ╚══════════════════════════════════════════╝
+function renderDirCli() {
+  const DD = DIRECTOR_DATA;
+  if (!DD || !DD.topClients || !DD.topClients.length) {
+    document.getElementById('dt-cli').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+
+  let cliExpanded = null;
+  let cliFiltro   = '';
+  const clients   = DD.topClients;
+  const maxCli    = Math.max(...clients.map(c=>c.fat), 1);
+
+  function buildCliRow(c, globalIdx) {
+    const isExp = cliExpanded === globalIdx;
+
+    let lineChart = '';
+    if (isExp && c.m26 && c.m26.length > 1) {
+      const vals = c.m26.map(m=>m.fat);
+      const maxV = Math.max(...vals, 1);
+      const W = 280, H = 60, pad = 6;
+      const pts = vals.map((v,j)=>{
+        const x = pad + j*(W-pad*2)/(Math.max(vals.length-1,1));
+        const y = H - pad - (v/maxV)*(H-pad*2);
+        return [x,y];
+      });
+      const polyline = pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+      const area = `${pts[0][0].toFixed(1)},${H} ` + polyline + ` ${pts[pts.length-1][0].toFixed(1)},${H}`;
+      const dots = pts.map(([x,y],j)=>{
+        const mk = c.m26[j].month;
+        const v  = vals[j];
+        const isCurM = mk===DD.curMonth;
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCurM?4:2.5}" fill="${isCurM?'var(--primary)':'var(--warn)'}" stroke="var(--surf)" stroke-width="1.5"/>
+          <text x="${x.toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCurM?'var(--primary)':'rgba(255,255,255,.7)'}" font-weight="700">${v>0?fk(v):''}</text>
+          <text x="${x.toFixed(1)}" y="${(H+9).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCurM?'var(--primary)':'rgba(255,255,255,.35)'}">${mk}</text>`;
+      }).join('');
+      lineChart = `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <svg viewBox="0 0 ${W} ${H+14}" style="width:100%;overflow:visible">
+          <defs><linearGradient id="clg${globalIdx}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+          </linearGradient></defs>
+          <polygon points="${area}" fill="url(#clg${globalIdx})"/>
+          <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round"/>
+          ${dots}
+        </svg>
+      </div>`;
+    }
+
+    return `<div style="margin-bottom:10px;cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:10px" onclick="toggleCli(${globalIdx})">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <div style="font-size:11px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${globalIdx+1}. ${c.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;color:var(--primary)">${ff(c.fat)}</span>
+          <span style="font-size:10px;color:var(--muted)">${isExp?'▲':'▼'}</span>
+        </div>
+      </div>
+      <div class="pbar"><div class="pfill g" style="width:${(c.fat/maxCli*100).toFixed(0)}%"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">
+        ${c.city?`<span>${c.city}</span>`:''}
+        <span>Fat. <strong style="color:var(--primary)">${ff(c.fat)}</strong></span>
+        ${c.curFat>0
+          ? `<span>Mg ${DD.curMonth} <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span></span>`
+          : `<span style="color:var(--warn);font-weight:700">⚠ não comprou esse mês</span>`}
+        ${c.dev>0?`<span style="color:var(--danger);font-weight:700">Dev ${fk(c.dev)}</span>`:''}
+      </div>
+      ${lineChart}
+    </div>`;
+  }
+
+  function renderCliList() {
+    const q = cliFiltro.toLowerCase().trim();
+    const filtered = q
+      ? clients.filter(c => c.name.toLowerCase().includes(q))
+      : clients;
+    const info = q
+      ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${filtered.length} resultado(s) para "<strong style="color:var(--text)">${q}</strong>"</div>`
+      : `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${clients.length} clientes · acumulado 2026 acima de R$3k</div>`;
+    const rows = filtered.map(c => buildCliRow(c, clients.indexOf(c))).join('');
+    document.getElementById('cli-list').innerHTML = info + (rows || '<p style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Nenhum cliente encontrado</p>');
+  }
+
+  document.getElementById('dt-cli').innerHTML = `
+    <div class="card">
+      <div class="ctitle">👥 Clientes — acumulado 2026</div>
+      <div style="margin-bottom:12px">
+        <input id="cli-search" type="text" placeholder="🔍  Buscar por nome do cliente..."
+          style="width:100%;padding:10px 12px;background:var(--raised);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;outline:none"
+          oninput="cliSearch(this.value)">
+      </div>
+      <div id="cli-list"></div>
+    </div>`;
+
+  window.cliSearch = function(val) {
+    cliFiltro = val;
+    cliExpanded = null;
+    renderCliList();
+  };
+
+  window.toggleCli = function(i) {
+    cliExpanded = cliExpanded === i ? null : i;
+    renderCliList();
+  };
+
+  renderCliList();
+}
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — MENU: CIDADES               ║
+// ╚══════════════════════════════════════════╝
+function renderDirCid() {
+  const DD = DIRECTOR_DATA;
+  if (!DD || !DD.cities || !DD.cities.length) {
+    document.getElementById('dt-cid').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+
+  let cityExpanded = null;
+  let cidFiltro    = '';
+  const cities     = DD.cities || [];
+  const maxCity    = Math.max(...cities.map(c=>c.fat), 1);
+
+  function buildCityCard() {
+    const q = cidFiltro.toLowerCase().trim();
+    const filtered = q ? cities.filter(c => c.name.toLowerCase().includes(q)) : cities;
+    const info = q
+      ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${filtered.length} resultado(s) para "<strong style="color:var(--text)">${q}</strong>"</div>`
+      : `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${cities.length} cidades</div>`;
+
+    const rows = filtered.map((c,fi)=>{
+      const i = cities.indexOf(c);
+      const barW = (c.fat/maxCity*100).toFixed(0);
+      const isExp = cityExpanded === i;
+
+      let lineChart = '';
+      if (isExp && c.m26 && c.m26.length > 1) {
+        const vals = c.m26.map(m=>m.fat);
+        const maxV = Math.max(...vals, 1);
+        const W = 280, H = 56, pad = 6;
+        const pts = vals.map((v,j)=>{
+          const x = pad + j*(W-pad*2)/(Math.max(vals.length-1,1));
+          const y = H - pad - (v/maxV)*(H-pad*2);
+          return [x,y];
+        });
+        const polyline = pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+        const area = `${pts[0][0].toFixed(1)},${H} ` + polyline + ` ${pts[pts.length-1][0].toFixed(1)},${H}`;
+        const dots = pts.map(([x,y],j)=>{
+          const mk = c.m26[j].month;
+          const v  = vals[j];
+          const isCurM = mk===DD.curMonth;
+          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCurM?4:2.5}" fill="${isCurM?'var(--primary)':'var(--warn)'}" stroke="var(--surf)" stroke-width="1.5"/>
+            <text x="${x.toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCurM?'var(--primary)':'rgba(255,255,255,.7)'}" font-weight="700">${v>0?fk(v):''}</text>
+            <text x="${x.toFixed(1)}" y="${(H+8).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCurM?'var(--primary)':'rgba(255,255,255,.35)'}">${mk}</text>`;
+        }).join('');
+        lineChart = `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+          <svg viewBox="0 0 ${W} ${H+12}" style="width:100%;overflow:visible">
+            <defs><linearGradient id="cg${i}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+            </linearGradient></defs>
+            <polygon points="${area}" fill="url(#cg${i})"/>
+            <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round"/>
+            ${dots}
+          </svg>
+        </div>`;
+      }
+
+      return `<div style="margin-bottom:10px;cursor:pointer" onclick="toggleCity(${i})">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:11px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${c.name}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0">
+            <span style="font-size:10px;color:var(--muted)">${DD.curMonth}: ${fk(c.curFat)}</span>
+            <span style="font-size:11px;font-weight:700;color:var(--primary)">${fk(c.fat)}</span>
+            <span style="font-size:10px;color:var(--muted)">${isExp?'▲':'▼'}</span>
+          </div>
+        </div>
+        <div class="pbar"><div class="pfill g" style="width:${barW}%"></div></div>
+        ${lineChart}
+      </div>`;
+    }).join('');
+
+    return `<div class="card">
+      <div class="ctitle">🗺️ Vendas por Cidade — acumulado 2026</div>
+      ${info}
+      ${rows || '<p style="color:var(--muted);font-size:12px">Nenhuma cidade encontrada</p>'}
+    </div>`;
+  }
+
+  window.toggleCity = function(i) {
+    cityExpanded = cityExpanded === i ? null : i;
+    const el = document.getElementById('city-card');
+    if (el) el.outerHTML = '<div id="city-card">' + buildCityCard() + '</div>';
+  };
+
+  window.cidSearch = function(val) {
+    cidFiltro = val;
+    cityExpanded = null;
+    const el = document.getElementById('city-card');
+    if (el) el.outerHTML = '<div id="city-card">' + buildCityCard() + '</div>';
+  };
+
+  document.getElementById('dt-cid').innerHTML = `
+    <div style="padding:0 0 12px">
+      <input id="cid-search" type="text" placeholder="🔍  Buscar por nome da cidade..."
+        style="width:100%;padding:10px 12px;background:var(--raised);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;outline:none"
+        oninput="cidSearch(this.value)">
+    </div>
+    <div id="city-card">${buildCityCard()}</div>`;
+}
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — MENU 2: VENDEDORES          ║
+// ╚══════════════════════════════════════════╝
+let vendFiltro = '';
+
+function renderVendList() {
+  const DD = DIRECTOR_DATA;
+  const q = vendFiltro.toLowerCase().trim();
+  const vendors = q
+    ? DD.vendors.filter(v => v.name.toLowerCase().includes(q) || v.code.includes(q))
+    : DD.vendors;
+
+  const info = q
+    ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${vendors.length} resultado(s) para "<strong style="color:var(--text)">${q}</strong>"</div>`
+    : '';
+
+  const rows = vendors.map((v, filtIdx) => {
+    const idx = DD.vendors.indexOf(v);
+    const totFat  = v.m26.reduce((s,m)=>s+m.fat,0);
+    const totMeta = v.m26.reduce((s,m)=>s+m.meta,0);
+    const ating   = totMeta>0?totFat/totMeta*100:0;
+    // ── Gráfico de linhas mensal ─────────────────────────────────────────────
+    const curM   = v.m26.find(m=>m.month===v.curMonth) || {};
+    const metaCur = curM.meta || 0;
+    const vals   = v.m26.map(m=>m.fat);
+    const metas  = v.m26.map(m=>m.meta||0);
+    const maxV   = Math.max(...vals, ...metas, 1);
+    const W=280, H=54, pad=8;
+    const pts = vals.map((val,j)=>{
+      const x = pad + j*(W-pad*2)/(Math.max(vals.length-1,1));
+      const y = H - pad - (val/maxV)*(H-pad*2);
+      return [x,y];
+    });
+    const ptsMeta = metas.map((val,j)=>{
+      const x = pad + j*(W-pad*2)/(Math.max(metas.length-1,1));
+      const y = H - pad - (val/maxV)*(H-pad*2);
+      return [x,y];
+    });
+    const polyline = pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const polyMeta = ptsMeta.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const areaFat  = `${pts[0][0].toFixed(1)},${H} ` + polyline + ` ${pts[pts.length-1][0].toFixed(1)},${H}`;
+    const lineChart = `<svg viewBox="0 0 ${W} ${H+14}" style="width:100%;overflow:visible;margin-top:8px">
+      <defs><linearGradient id="vg${idx}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.01"/>
+      </linearGradient></defs>
+      <polygon points="${areaFat}" fill="url(#vg${idx})"/>
+      <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round"/>
+      <polyline points="${polyMeta}" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1" stroke-dasharray="3,3"/>
+      ${pts.map(([x,y],j)=>{
+        const m   = v.m26[j];
+        const isCur = m.month===v.curMonth;
+        const col = isCur?'var(--primary)':'var(--warn)';
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isCur?4:2.5}" fill="${col}" stroke="var(--surf)" stroke-width="1.5"/>
+          <text x="${x.toFixed(1)}" y="${(y-7).toFixed(1)}" text-anchor="middle" font-size="7" fill="${col}" font-weight="${isCur?'800':'600'}">${fk(m.fat)}</text>
+          <text x="${x.toFixed(1)}" y="${(H+10).toFixed(1)}" text-anchor="middle" font-size="7" fill="${isCur?'var(--primary)':'rgba(255,255,255,.35)'}" font-weight="${isCur?'700':'400'}">${m.month}</text>`;
+      }).join('')}
+    </svg>`;
+
+    const isExp = dirVendExpanded === idx;
+
+    // ── Drill-down: categorias estilo Meta Categorias + clientes 2026 ─────────
+    let drillHtml = '';
+    if (isExp) {
+      // Categorias
+      const catRows = CAT_METAS.map((cm, ci) => {
+        const catEntry = (v.cats||[]).find(c=>c.name.toUpperCase()===cm.name.toUpperCase()) || {};
+        const metaCat  = Math.round(metaCur * cm.pct);
+        const fatCat   = catEntry.curFat || 0;
+        const falta    = Math.max(metaCat - fatCat, 0);
+        const excede   = Math.max(fatCat - metaCat, 0);
+        const ating2   = metaCat > 0 ? fatCat / metaCat * 100 : 0;
+        const cls2     = ating2 >= 100 ? 'g' : ating2 >= 65 ? 'y' : 'r';
+        const barW2    = Math.min(ating2, 100).toFixed(1);
+        const catKey   = `${idx}-${ci}`;
+        const catIsExp = !!vendCatExpMap[catKey];
+
+        let catEvo = '';
+        if (catIsExp && catEntry.m26 && catEntry.m26.length > 0) {
+          const W=260, H=70, pad=8;
+          const months = v.m26.map(m=>m.month);
+          const fatMap = {};
+          (catEntry.m26||[]).forEach(r=>{ fatMap[r.month]=r.fat; });
+          const pts2 = months.map((month,j)=>{
+            const fat2 = fatMap[month]||0;
+            const mObj = v.m26.find(m=>m.month===month)||{};
+            const meta2= Math.round((mObj.meta||0)*cm.pct);
+            return {month, fat:fat2, meta:meta2, j};
+          });
+          const maxV2 = Math.max(...pts2.map(p=>Math.max(p.fat,p.meta)),1);
+          const px2 = j=> pad + j*(W-pad*2)/(Math.max(pts2.length-1,1));
+          const py2 = vv=> H - pad - (vv/maxV2)*(H-pad*2);
+          const pf2 = pts2.map(p=>[px2(p.j),py2(p.fat)]);
+          const pm2 = pts2.map(p=>[px2(p.j),py2(p.meta)]);
+          const polyF2 = pf2.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+          const polyM2 = pm2.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+          const area2  = `${pf2[0][0].toFixed(1)},${H} `+polyF2+` ${pf2[pf2.length-1][0].toFixed(1)},${H}`;
+          const dots2  = pts2.map((p,j)=>{
+            const [x2,yf2]=[pf2[j][0],pf2[j][1]];
+            const [,ym2]=pm2[j];
+            const isCur2=p.month===v.curMonth;
+            const col2=isCur2?'var(--primary)':'var(--warn)';
+            return `<circle cx="${x2.toFixed(1)}" cy="${yf2.toFixed(1)}" r="${isCur2?3:2}" fill="${col2}" stroke="var(--surf)" stroke-width="1"/>
+              <text x="${x2.toFixed(1)}" y="${(yf2-6).toFixed(1)}" text-anchor="middle" font-size="6" fill="${col2}" font-weight="700">${p.fat>0?fk(p.fat):''}</text>
+              <circle cx="${x2.toFixed(1)}" cy="${ym2.toFixed(1)}" r="1.5" fill="rgba(255,200,0,.5)" stroke="none"/>
+              <text x="${x2.toFixed(1)}" y="${(H+9).toFixed(1)}" text-anchor="middle" font-size="6" fill="${isCur2?'var(--primary)':'rgba(255,255,255,.3)'}">${p.month}</text>`;
+          }).join('');
+          catEvo = `<div style="margin-top:6px;padding:8px;background:var(--surf);border-radius:6px">
+            <svg viewBox="0 0 ${W} ${H+12}" style="width:100%;overflow:visible">
+              <defs><linearGradient id="vcg${idx}${ci}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+              </linearGradient></defs>
+              <polygon points="${area2}" fill="url(#vcg${idx}${ci})"/>
+              <polyline points="${polyM2}" fill="none" stroke="rgba(255,200,0,.6)" stroke-width="1.2" stroke-dasharray="3,3"/>
+              <polyline points="${polyF2}" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round"/>
+              ${dots2}
+            </svg></div>`;
+        }
+
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:11px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cm.name}</div>
+            <span class="badge ${cls2}" style="margin-left:6px;flex-shrink:0;font-size:9px">${ating2.toFixed(1)}%</span>
+          </div>
+          <div style="position:relative;height:20px;background:#f5c400;border-radius:5px;overflow:hidden;margin-bottom:4px">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${barW2}%;background:linear-gradient(90deg,#7b0000,#c0392b);border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;overflow:hidden">
+              ${ating2>=18?`<span style="font-size:9px;font-weight:800;color:#fff;white-space:nowrap">${ff(fatCat)}</span>`:''}
+            </div>
+            ${ating2<18?`<span style="position:absolute;left:5px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:800;color:#fff">${ff(fatCat)}</span>`:''}
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:5px">
+            <span>Meta: <strong style="color:#f5c400">${ff(metaCat)}</strong></span>
+            ${falta>0?`<span style="color:var(--danger);font-weight:700">Falta ${ff(falta)}</span>`:`<span style="color:var(--primary);font-weight:700">✓ +${ff(excede)}</span>`}
+          </div>
+          <div onclick="toggleVendCat('${catKey}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;color:var(--primary);padding:2px 7px;border:1px solid var(--primary);border-radius:20px;opacity:.8">
+            ${catIsExp?'▲ Fechar':'▼ Clique e veja a evolução'}
+          </div>
+          ${catEvo}
+        </div>`;
+      }).join('');
+
+      // Clientes 2026
+      const MESES_LOW = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+      const MESES_CAP = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const cliRows2026 = (v.clients||[]).map((c, ci) => {
+        const fat2026 = MESES_LOW.reduce((s,m)=>s+(c[m]||0),0);
+        if (fat2026 <= 0) return '';
+        const cliKey  = `${idx}-${ci}`;
+        const cliIsExp= !!vendCliExpMap[cliKey];
+        const curFatC = c.curFat || 0;
+
+        let cliEvo = '';
+        if (cliIsExp) {
+          const cliPts = MESES_CAP.map((mes,j)=>({month:mes, fat:c[mes.toLowerCase()]||0, j}))
+                                   .filter(p=>p.fat>0);
+          if (cliPts.length > 0) {
+            const W=300, H=100, pad=12;
+            const maxV3 = Math.max(...cliPts.map(p=>p.fat),1);
+            const allPts= MESES_CAP.map((mes,j)=>{
+              const fat3=c[mes.toLowerCase()]||0;
+              const x3=pad+j*(W-pad*2)/(Math.max(MESES_CAP.length-1,1));
+              const y3=fat3>0?H-pad-(fat3/maxV3)*(H-pad*2):null;
+              return {month:mes,fat:fat3,x:x3,y:y3,j};
+            }).filter(p=>p.y!==null);
+            const polyC = allPts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+            const areaC = `${allPts[0].x.toFixed(1)},${H} `+polyC+` ${allPts[allPts.length-1].x.toFixed(1)},${H}`;
+            const dotsC = allPts.map(p=>{
+              const isCurC=p.month===v.curMonth;
+              const colC=isCurC?'var(--primary)':'var(--warn)';
+              return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isCurC?4.5:3}" fill="${colC}" stroke="var(--surf)" stroke-width="1.5"/>
+                <text x="${p.x.toFixed(1)}" y="${(p.y-9).toFixed(1)}" text-anchor="middle" font-size="8" fill="${colC}" font-weight="700">${fk(p.fat)}</text>
+                <text x="${p.x.toFixed(1)}" y="${(H+11).toFixed(1)}" text-anchor="middle" font-size="8" fill="${isCurC?'var(--primary)':'rgba(255,255,255,.4)'}">${p.month}</text>`;
+            }).join('');
+            cliEvo = `<div style="margin-top:8px;padding:12px;background:var(--surf);border-radius:8px">
+              <svg viewBox="0 0 ${W} ${H+16}" style="width:100%;overflow:visible">
+                <defs><linearGradient id="vlg${idx}${ci}" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+                </linearGradient></defs>
+                <polygon points="${areaC}" fill="url(#vlg${idx}${ci})"/>
+                <polyline points="${polyC}" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linejoin="round"/>
+                ${dotsC}
+              </svg></div>`;
+          }
+        }
+
+        return `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+            <div style="font-size:11px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</div>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);margin-left:8px;flex-shrink:0">${fk(fat2026)}</span>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-bottom:4px">
+            ${c.city?`${c.city} · `:''}
+            ${curFatC>0?`Mg ${v.curMonth} <span style="color:${mcol(c.mg)};font-weight:700">${c.mg.toFixed(1)}%</span>`:'<span style="color:var(--warn);font-weight:600">⚠ não comprou esse mês</span>'}
+          </div>
+          <div onclick="toggleVendCli('${cliKey}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;color:var(--primary);padding:2px 7px;border:1px solid var(--primary);border-radius:20px;opacity:.8">
+            ${cliIsExp?'▲ Fechar':'▼ Clique e veja a evolução'}
+          </div>
+          ${cliEvo}
+        </div>`;
+      }).join('');
+
+      drillHtml = `
+        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border)" onclick="event.stopPropagation()">
+
+          <!-- Seção Categorias -->
+          <div style="background:var(--raised);border-radius:10px;padding:12px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--warn);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+              <span>📦</span> Meta por Categoria — ${v.curMonth}
+            </div>
+            ${catRows}
+          </div>
+
+          <!-- Seção Clientes -->
+          <div style="background:var(--raised);border-radius:10px;padding:12px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(91,155,245,.9);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+              <span>👥</span> Clientes 2026
+            </div>
+            ${cliRows2026 || '<p style="color:var(--muted);font-size:11px">Sem clientes</p>'}
+          </div>
+
+        </div>`;
+    }
+
+    return `
+    <div class="card" style="cursor:pointer" onclick="toggleDirVend(${idx})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px"><span class="badge ${pcls(ating)}" style="padding:1px 6px">${ating.toFixed(1)}%</span> · Meta ${v.curMonth}: <span style="color:var(--warn);font-weight:700">${ff(metaCur)}</span></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:800;color:var(--primary)">${fk(totFat)}</div>
+          <div style="font-size:10px;color:var(--muted)">acumulado</div>
+        </div>
+      </div>
+      ${lineChart}
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px">${isExp?'▲ Recolher':'▼ Ver categorias e clientes'}</div>
+      ${drillHtml}
+    </div>`;
+  }).join('');
+
+  document.getElementById('vend-list').innerHTML = info + rows;
+}
+
+function renderDirVend() {
+  const DD = DIRECTOR_DATA;
+  if (!DD || !DD.vendors || !DD.vendors.length) {
+    document.getElementById('dt-vend').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+  vendFiltro = '';
+  document.getElementById('dt-vend').innerHTML = `
+    <div style="padding:0 0 12px">
+      <input id="vend-search" type="text" placeholder="🔍  Buscar por nome ou código..."
+        style="width:100%;padding:10px 12px;background:var(--raised);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;outline:none"
+        oninput="vendSearch(this.value)">
+    </div>
+    <div id="vend-list"></div>`;
+  renderVendList();
+}
+
+window.vendSearch = function(val) {
+  vendFiltro = val;
+  dirVendExpanded = null;
+  renderVendList();
+};
+
+
+// ╔══════════════════════════════════════════╗
+// ║  DIRETORIA — MENU: META CATEGORIA        ║
+// ╚══════════════════════════════════════════╝
+const CAT_METAS = [
+  { name: 'CONSERVAS',              pct: 0.60 },
+  { name: 'MOLHOS E TEMPEROS',      pct: 0.30 },
+  { name: 'CEREAIS',                pct: 0.04 },
+  { name: 'DOCES E GELEIAS',        pct: 0.02 },
+  { name: 'ACUCARES E CONFEITARIA', pct: 0.02 },
+  { name: 'EMPORIO - REVENDA',      pct: 0.02 },
+];
+
+let catExpanded = null;
+
+function buildCatEvoSvg(cm, catData) {
+  const DD = DIRECTOR_DATA;
+  const W=280, H=80, pad=10;
+  const m26months = DD.m26.map(m=>m.month);
+  const fatByMonth = {};
+  (catData.m26||[]).forEach(r=>{ fatByMonth[r.month]=r.fat; });
+  const pts = m26months.map((month,j)=>{
+    const fat  = fatByMonth[month]||0;
+    const mObj = DD.m26.find(m=>m.month===month)||{};
+    const meta = Math.round((mObj.meta||0)*cm.pct);
+    return {month, fat, meta, j};
+  });
+  const maxV = Math.max(...pts.map(p=>Math.max(p.fat,p.meta)),1);
+  const px = j=> pad + j*(W-pad*2)/(Math.max(pts.length-1,1));
+  const py = v=> H - pad - (v/maxV)*(H-pad*2);
+
+  const ptsFat  = pts.map(p=>[px(p.j), py(p.fat)]);
+  const ptsMeta = pts.map(p=>[px(p.j), py(p.meta)]);
+  const polyFat  = ptsFat.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const polyMeta = ptsMeta.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const areaFat  = `${ptsFat[0][0].toFixed(1)},${H} `+polyFat+` ${ptsFat[ptsFat.length-1][0].toFixed(1)},${H}`;
+
+  const dots = pts.map((p,j)=>{
+    const [x,yf] = ptsFat[j];
+    const [,ym]  = ptsMeta[j];
+    const isCur  = p.month===DD.curMonth;
+    const col    = isCur?'var(--primary)':'var(--warn)';
+    return `<circle cx="${x.toFixed(1)}" cy="${yf.toFixed(1)}" r="${isCur?3.5:2}" fill="${col}" stroke="var(--surf)" stroke-width="1"/>
+      <text x="${x.toFixed(1)}" y="${(yf-7).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${col}" font-weight="${isCur?'800':'600'}">${fk(p.fat)}</text>
+      <circle cx="${x.toFixed(1)}" cy="${ym.toFixed(1)}" r="1.5" fill="rgba(255,200,0,.5)" stroke="none"/>
+      <text x="${x.toFixed(1)}" y="${(H+10).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="${isCur?'var(--primary)':'rgba(255,255,255,.35)'}" font-weight="${isCur?'700':'400'}">${p.month}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H+14}" style="width:100%;overflow:visible;margin-top:8px">
+    <defs><linearGradient id="cgcat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <polygon points="${areaFat}" fill="url(#cgcat)"/>
+    <polyline points="${polyMeta}" fill="none" stroke="rgba(255,200,0,.7)" stroke-width="1.5" stroke-dasharray="4,3" stroke-linejoin="round"/>
+    <polyline points="${polyFat}"  fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}
+  </svg>
+  <div style="font-size:9px;color:var(--muted);display:flex;gap:12px;margin-top:4px">
+    <span><span style="display:inline-block;width:12px;height:2px;background:var(--primary);margin-right:3px;vertical-align:middle"></span>Fat.</span>
+    <span><span style="display:inline-block;width:12px;height:2px;background:rgba(255,200,0,.7);border-top:2px dashed rgba(255,200,0,.7);margin-right:3px;vertical-align:middle"></span>Meta</span>
+  </div>`;
+}
+
+function renderDirMetaCat() {
+  const DD = DIRECTOR_DATA;
+  if (!DD || !DD.m26 || !DD.m26.length) {
+    document.getElementById('dt-metacat').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+
+  const curM      = DD.m26.find(m=>m.month===DD.curMonth) || DD.m26[DD.m26.length-1];
+  const metaGeral = curM.meta || 0;
+  const fatGeral  = curM.fat  || 0;
+
+  const rows = CAT_METAS.map((cm,idx) => {
+    const catData  = (DD.categories||[]).find(c=>c.name.toUpperCase()===cm.name.toUpperCase()) || {};
+    const metaCat  = Math.round(metaGeral * cm.pct);
+    const fatCat   = catData.curFat || 0;
+    const falta    = Math.max(metaCat - fatCat, 0);
+    const excede   = Math.max(fatCat - metaCat, 0);
+    const ating    = metaCat > 0 ? fatCat / metaCat * 100 : 0;
+    const cls      = ating >= 100 ? 'g' : ating >= 65 ? 'y' : 'r';
+    const barW     = Math.min(ating, 100).toFixed(1);
+    const isExp    = catExpanded === idx;
+    const evo      = isExp ? buildCatEvoSvg(cm, catData) : '';
+
+    return `
+    <div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div style="font-size:12px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cm.name}</div>
+        <span class="badge ${cls}" style="margin-left:8px;flex-shrink:0">${ating.toFixed(1)}%</span>
+      </div>
+      <div style="position:relative;height:22px;background:#f5c400;border-radius:6px;overflow:hidden;margin-bottom:5px">
+        <div style="position:absolute;left:0;top:0;height:100%;width:${barW}%;background:linear-gradient(90deg,#7b0000,#c0392b);border-radius:6px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;overflow:hidden">
+          ${ating>=18?`<span style="font-size:10px;font-weight:800;color:#fff;white-space:nowrap">${ff(fatCat)}</span>`:''}
+        </div>
+        ${ating<18?`<span style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#fff">${ff(fatCat)}</span>`:''}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:6px">
+        <span>Meta: <strong style="color:#f5c400">${ff(metaCat)}</strong> <span style="opacity:.6">(${(cm.pct*100).toFixed(0)}% da meta geral)</span></span>
+        ${falta>0
+          ? `<span style="color:var(--danger);font-weight:700">Falta ${ff(falta)}</span>`
+          : `<span style="color:var(--primary);font-weight:700">✓ +${ff(excede)}</span>`}
+      </div>
+      <div onclick="toggleCatEvo(${idx})" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--primary);padding:3px 8px;border:1px solid var(--primary);border-radius:20px;opacity:.8">
+        ${isExp?'▲ Fechar':'▼ Clique e veja a evolução'}
+      </div>
+      ${isExp?`<div style="margin-top:8px;padding:10px;background:var(--raised);border-radius:8px">${evo}</div>`:''}
+    </div>`;
+  });
+
+  const totalMetaCat = CAT_METAS.reduce((s,cm)=>s+Math.round(metaGeral*cm.pct),0);
+  const totalFatCat  = CAT_METAS.reduce((s,cm)=>{
+    const cat = (DD.categories||[]).find(c=>c.name.toUpperCase()===cm.name.toUpperCase());
+    return s + (cat?cat.curFat:0);
+  },0);
+  const totalAting   = totalMetaCat>0?totalFatCat/totalMetaCat*100:0;
+
+  document.getElementById('dt-metacat').innerHTML = `
+    <div class="card">
+      <div class="ctitle">🎯 Meta por Categoria — ${DD.curMonth}/2026</div>
+      <div class="kgrid" style="margin-bottom:16px">
+        <div class="kcard">
+          <div class="klbl">Meta Geral Mês</div>
+          <div class="kval" style="color:var(--warn)">${fk(metaGeral)}</div>
+          <div class="ksub">${DD.curMonth}/2026</div>
+        </div>
+        <div class="kcard">
+          <div class="klbl">Fat. Geral Mês</div>
+          <div class="kval" style="color:var(--primary)">${fk(fatGeral)}</div>
+          <div class="ksub"><span class="badge ${pcls(fatGeral/metaGeral*100)}">${metaGeral>0?(fatGeral/metaGeral*100).toFixed(1):'0'}%</span></div>
+        </div>
+      </div>
+      ${rows.join('')}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--muted)">Total categorias rastreadas</span>
+        <span class="badge ${pcls(totalAting)}">${totalAting.toFixed(1)}%</span>
+      </div>
+    </div>
+  `;
+}
+
+window.toggleCatEvo = function(idx) {
+  catExpanded = catExpanded === idx ? null : idx;
+  renderDirMetaCat();
+};
+
+window.toggleDirVend = function(idx) {
+  if (dirVendExpanded === idx) {
+    dirVendExpanded = null;
+  } else {
+    dirVendExpanded = idx;
+    // limpa expansões internas do vendor anterior
+    vendCatExpMap = {};
+    vendCliExpMap = {};
+  }
+  renderVendList();
+};
+
+window.toggleVendCat = function(key) {
+  event.stopPropagation();
+  vendCatExpMap[key] = !vendCatExpMap[key];
+  renderVendList();
+};
+
+window.toggleVendCli = function(key) {
+  event.stopPropagation();
+  vendCliExpMap[key] = !vendCliExpMap[key];
+  renderVendList();
+};
+
+// ── Enter key para formulários da diretoria ───────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const du = document.getElementById('du');
+  const dp = document.getElementById('dp');
+  if (du) du.addEventListener('keydown', e => { if(e.key==='Enter') dp.focus(); });
+  if (dp) dp.addEventListener('keydown', e => { if(e.key==='Enter') doLoginDir(); });
+});
+// Enter key
+document.getElementById('ic').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('ip').focus();});
+document.getElementById('ip').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>
