@@ -84,6 +84,28 @@ def build_vendor(name, code, m26, m25, clients, cats):
             "m26": m26, "clients": clients, "cats": cats, "m25": m25,
             "devClients": {}, "filial": "01", "senha": code + "@"}
 
+# Perfis de distribuição de categorias por cliente (6 variações cíclicas)
+_CLI_CAT_PROFILES = [
+    [10.0, 5.0, 2.5, 1.5, 1.0, 0.6, 0.3],
+    [ 9.0, 5.0, 3.0, 1.8, 0.9, 0.5, 0.3],
+    [11.0, 5.0, 2.0, 1.5, 1.2, 0.6, 0.3],
+    [ 9.0, 6.0, 2.5, 1.2, 1.0, 0.5, 0.3],
+    [10.0, 5.0, 3.0, 1.5, 0.8, 0.5, 0.3],
+    [ 8.0, 5.0, 2.5, 2.0, 1.0, 0.5, 0.3],
+]
+
+def assign_cli_cats(clients, cat_names):
+    """Atribui distribuição fictícia de categorias a cada cliente."""
+    n = len(cat_names)
+    for i, c in enumerate(clients):
+        weights = _CLI_CAT_PROFILES[i % len(_CLI_CAT_PROFILES)][:n]
+        total   = sum(weights)
+        pcts    = [round(w / total, 3) for w in weights]
+        pcts[-1] = round(1.0 - sum(pcts[:-1]), 3)
+        c["cats"] = [{"name": cat_names[j], "pct": pcts[j]}
+                     for j in range(n) if pcts[j] >= 0.02]
+    return clients
+
 # ──────────────────────────────────────────────────────────────────────────────
 # VENDOR 1 — ANDERSON SILVA  (SP Capital)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -122,14 +144,17 @@ def vendor_anderson():
         # índice 4 (FARMÁCIA DO POVO), 10 (FARMÁCIA REDE SAÚDE), 13 (DROGARIA NOVA ERA) sem compra em Mai
         "Mai": [26000, 21500, 18500, 17000,     0, 13500, 11400, 9800, 8700, 7700,     0, 5700, 4900,     0],
     }
-    cats = make_cats([
+    cat_defs = [
         ("MED. GENÉRICOS",   620000,  76000, 18.5, cm26([122000, 128000, 138000, 124000, 76000])),
         ("MED. REFERÊNCIA",  430000,  52000, 19.2, cm26([ 84000,  88500,  96000,  87000, 52000])),
         ("OTC / SIMILARES",  260000,  32000, 17.8, cm26([ 51000,  53500,  58000,  52500, 32000])),
         ("DERMOCOSMÉTICOS",  155000,  19000, 20.5, cm26([ 30000,  31500,  34500,  31000, 19000])),
         ("HIGIENE E BELEZA",  83000,  10200, 16.8, cm26([ 16200,  17000,  18500,  16800, 10200])),
-    ])
-    return build_vendor("Anderson Silva", "001", m26, m25, make_clients(defs, hist), cats)
+    ]
+    cats    = make_cats(cat_defs)
+    clients = make_clients(defs, hist)
+    assign_cli_cats(clients, [d[0] for d in cat_defs])
+    return build_vendor("Anderson Silva", "001", m26, m25, clients, cats)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # VENDOR 2 — CAMILA FERREIRA  (Interior SP)
@@ -171,15 +196,18 @@ def vendor_camila():
         # índice 10 (DROGARIA MODERNA), 12 (DROGARIA TOTAL FARMA), 14 (DROGARIA BEM ESTAR) sem compra em Mai
         "Mai": [15800, 13500, 12200, 11100, 10000, 8900, 8000, 7100, 6400, 5700,    0, 4600,    0, 3700,    0, 2900],
     }
-    cats = make_cats([
+    cat_defs = [
         ("MED. GENÉRICOS",   468000,  58000, 19.5, cm26([ 92000,  102000,  96000,  100000,  58000])),
         ("MED. REFERÊNCIA",  323000,  40000, 20.3, cm26([ 63000,   70500,  66000,   68500,  40000])),
         ("SUPLEMENTOS",      165000,  20400, 22.8, cm26([ 32000,   35800,  33700,   35000,  20400])),
         ("OTC / SIMILARES",  112000,  14000, 18.5, cm26([ 22000,   24600,  23100,   24000,  14000])),
         ("DERMOCOSMÉTICOS",   90000,  11200, 21.5, cm26([ 17500,   19500,  18400,   19000,  11200])),
         ("HIGIENE E BELEZA",  42000,   4000, 17.2, cm26([  8300,    9300,   8700,    9000,   4000])),
-    ])
-    return build_vendor("Camila Ferreira", "002", m26, m25, make_clients(defs, hist), cats)
+    ]
+    cats    = make_cats(cat_defs)
+    clients = make_clients(defs, hist)
+    assign_cli_cats(clients, [d[0] for d in cat_defs])
+    return build_vendor("Camila Ferreira", "002", m26, m25, clients, cats)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # VENDOR 3 — RODRIGO COSTA  (ABC/Santos)
@@ -217,15 +245,18 @@ def vendor_rodrigo():
         # índice 9 (FARMÁCIA REDE ABC), 10 (DROGARIA EXPRESS ABC) sem compra em Mai
         "Mai": [16500, 13900, 11800, 10200, 8900,  8000,  7100,  6400,  5700,    0,    0, 4200],
     }
-    cats = make_cats([
+    cat_defs = [
         ("MED. GENÉRICOS",  358000,  44500, 18.8, cm26([ 70000,  72500,  78000,  71500,  44500])),
         ("MED. REFERÊNCIA", 248000,  30800, 19.6, cm26([ 48000,  50200,  54000,  49500,  30800])),
         ("OTC / SIMILARES", 152000,  18900, 18.1, cm26([ 29500,  30700,  33000,  30300,  18900])),
         ("HIGIENE E BELEZA", 96000,  11800, 17.5, cm26([ 18500,  19200,  20700,  19000,  11800])),
         ("DERMOCOSMÉTICOS",  80800,  10000, 21.0, cm26([ 15500,  16000,  17100,  15700,  10000])),
         ("VETERINÁRIOS",     39600,   4800, 20.5, cm26([  7900,   8000,   8500,   7800,   4800])),
-    ])
-    return build_vendor("Rodrigo Costa", "003", m26, m25, make_clients(defs, hist), cats)
+    ]
+    cats    = make_cats(cat_defs)
+    clients = make_clients(defs, hist)
+    assign_cli_cats(clients, [d[0] for d in cat_defs])
+    return build_vendor("Rodrigo Costa", "003", m26, m25, clients, cats)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # VENDOR 4 — TATIANA ALVES  (MG/RJ)
@@ -266,7 +297,7 @@ def vendor_tatiana():
         # índice 10 (DROGARIA MEIER), 11 (FARMÁCIA NITERÓI) sem compra em Mai
         "Mai": [22000, 18300, 16600, 15200, 13400, 12100, 10700, 9700, 8600, 7700,    0,    0, 5600, 5100, 4600],
     }
-    cats = make_cats([
+    cat_defs = [
         ("MED. GENÉRICOS",   567000,  70000, 20.1, cm26([111000, 121000, 114500, 124000,  70000])),
         ("MED. REFERÊNCIA",  392000,  48400, 21.0, cm26([ 76500,  83500,  79200,  85800,  48400])),
         ("SUPLEMENTOS",      215000,  26500, 23.5, cm26([ 42000,  45900,  43400,  47200,  26500])),
@@ -274,8 +305,11 @@ def vendor_tatiana():
         ("DERMOCOSMÉTICOS",  118000,  14500, 22.0, cm26([ 23000,  25100,  23800,  25600,  14500])),
         ("HIGIENE E BELEZA",  62000,   7600, 17.9, cm26([ 12000,  13200,  12500,  13500,   7600])),
         ("VETERINÁRIOS",      30000,   3700, 21.2, cm26([  5900,   6400,   6100,   6600,   3700])),
-    ])
-    return build_vendor("Tatiana Alves", "004", m26, m25, make_clients(defs, hist), cats)
+    ]
+    cats    = make_cats(cat_defs)
+    clients = make_clients(defs, hist)
+    assign_cli_cats(clients, [d[0] for d in cat_defs])
+    return build_vendor("Tatiana Alves", "004", m26, m25, clients, cats)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DIRETOR — consolida todos os vendedores
@@ -326,7 +360,7 @@ def build_director(todos):
         categories.append({"name": name, "total": round(fat_t), "curFat": round(v["cur"]),
                            "mg": round(v["_wmg"]/fat_t, 1) if fat_t else 0, "m26": cat_m})
 
-    cli_unif = defaultdict(lambda: {"fat":0,"dev":0,"_wmg":0,"city":"","prevFat":0,"m26":defaultdict(float)})
+    cli_unif = defaultdict(lambda: {"fat":0,"dev":0,"_wmg":0,"city":"","prevFat":0,"m26":defaultdict(float),"cats":[]})
     for d in todos.values():
         for c in d["clients"]:
             key = c["name"].upper().strip()
@@ -334,6 +368,7 @@ def build_director(todos):
             cu["fat"]     += c["curFat"]; cu["dev"]     += c["dev"]
             cu["_wmg"]    += c["curFat"] * c["mg"];  cu["prevFat"] += c["prevFat"]
             if not cu["city"] and c["city"]: cu["city"] = c["city"]
+            if not cu["cats"] and c.get("cats"):    cu["cats"] = c["cats"]
             for mes in MESES_5:
                 v = c.get(mes.lower(), 0)
                 if v: cu["m26"][mes] += v
@@ -345,7 +380,8 @@ def build_director(todos):
         cli_m = [{"month": mes, "fat": round(v["m26"][mes])} for mes in MESES_5 if v["m26"].get(mes, 0) > 0]
         top_clients.append({"name": name[:40], "city": v["city"][:25], "fat": round(fat_acum),
                             "curFat": round(fat_cur), "mg": round(v["_wmg"]/fat_cur, 1) if fat_cur else 0,
-                            "dev": round(v["dev"]), "prevFat": round(v["prevFat"]), "m26": cli_m})
+                            "dev": round(v["dev"]), "prevFat": round(v["prevFat"]), "m26": cli_m,
+                            "cats": v.get("cats", [])})
 
     por_cidade = defaultdict(lambda: defaultdict(float))
     for d in todos.values():
@@ -716,6 +752,127 @@ function itemLinha(nome, detalhe) {
          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">'+nome+'</span>'+
          '<span style="flex-shrink:0">'+detalhe+'</span></div>';
 }
+
+/* ═══════════════════════════════════════════════════
+   DIRETORIA — Clientes — drill-down por categoria
+════════════════════════════════════════════════════ */
+window.renderDirCli = function() {
+  var DD = DIRECTOR_DATA;
+  if (!DD || !DD.topClients || !DD.topClients.length) {
+    document.getElementById('dt-cli').innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Sem dados</p>';
+    return;
+  }
+
+  var cliExpanded = null;
+  var cliFiltro   = '';
+  var clients     = DD.topClients;
+  var maxCli      = Math.max.apply(null, clients.map(function(c){ return c.fat; }).concat([1]));
+
+  function mgColor(mg) {
+    return mg >= 22 ? 'var(--primary)' : mg >= 19 ? 'var(--warn)' : 'var(--danger)';
+  }
+
+  function buildCliRow(c, idx) {
+    var isExp = cliExpanded === idx;
+
+    /* gráfico de linha mensal */
+    var lineChart = '';
+    if (isExp && c.m26 && c.m26.length > 1) {
+      var vals = c.m26.map(function(m){ return m.fat; });
+      var maxV = Math.max.apply(null, vals.concat([1]));
+      var W = 280, H = 60, pad = 6;
+      var pts = vals.map(function(v, j) {
+        return [pad + j*(W-pad*2)/Math.max(vals.length-1,1), H-pad-(v/maxV)*(H-pad*2)];
+      });
+      var poly = pts.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+      var area = pts[0][0].toFixed(1)+','+H+' '+poly+' '+pts[pts.length-1][0].toFixed(1)+','+H;
+      var dots = pts.map(function(pt, j) {
+        var x=pt[0], y=pt[1], mk=c.m26[j].month, v=vals[j], cur=mk===DD.curMonth;
+        return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+(cur?4:2.5)+
+          '" fill="'+(cur?'var(--primary)':'var(--warn)')+'" stroke="var(--surf)" stroke-width="1.5"/>'+
+          '<text x="'+x.toFixed(1)+'" y="'+(y-8).toFixed(1)+'" text-anchor="middle" font-size="7" '+
+          'fill="'+(cur?'var(--primary)':'rgba(255,255,255,.7)')+'" font-weight="700">'+(v>0?fk(v):'')+' </text>'+
+          '<text x="'+x.toFixed(1)+'" y="'+(H+9).toFixed(1)+'" text-anchor="middle" font-size="7" '+
+          'fill="'+(cur?'var(--primary)':'rgba(255,255,255,.35)')+'">'+mk+'</text>';
+      }).join('');
+      lineChart = '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">'+
+        '<svg viewBox="0 0 '+W+' '+(H+14)+'" style="width:100%;overflow:visible">'+
+        '<defs><linearGradient id="clg'+idx+'" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="var(--primary)" stop-opacity="0.3"/>'+
+        '<stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>'+
+        '</linearGradient></defs>'+
+        '<polygon points="'+area+'" fill="url(#clg'+idx+')"/>'+
+        '<polyline points="'+poly+'" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linejoin="round"/>'+
+        dots+'</svg></div>';
+    }
+
+    /* drill-down de categorias */
+    var catHtml = '';
+    if (isExp && c.cats && c.cats.length) {
+      var maxPct = Math.max.apply(null, c.cats.map(function(ct){ return ct.pct; }));
+      catHtml = '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">';
+      catHtml += '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.3px">&#128202; CATEGORIAS COMPRADAS &mdash; ACUMULADO 2026</div>';
+      c.cats.forEach(function(ct) {
+        var val  = Math.round(c.fat * ct.pct);
+        var barW = (ct.pct / maxPct * 100).toFixed(0);
+        catHtml += '<div style="margin-bottom:8px">';
+        catHtml += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-bottom:3px">';
+        catHtml += '<span style="font-weight:600;color:var(--text)">'+ct.name+'</span>';
+        catHtml += '<span style="white-space:nowrap"><span style="color:var(--muted)">'+(ct.pct*100).toFixed(0)+'%&nbsp;&middot;&nbsp;</span>'+
+                   '<strong style="color:var(--primary)">'+ff(val)+'</strong></span>';
+        catHtml += '</div>';
+        catHtml += '<div style="height:5px;background:var(--raised);border-radius:3px">'+
+                   '<div style="height:100%;width:'+barW+'%;background:linear-gradient(90deg,var(--primary),var(--blue));border-radius:3px"></div></div>';
+        catHtml += '</div>';
+      });
+      catHtml += '</div>';
+    }
+
+    var mgStr = c.curFat > 0
+      ? '<span>Mg '+DD.curMonth+' <span style="color:'+mgColor(c.mg)+';font-weight:700">'+c.mg.toFixed(1)+'%</span></span>'
+      : '<span style="color:var(--warn);font-weight:700">&#9888; não comprou esse mês</span>';
+
+    return '<div style="margin-bottom:10px;cursor:pointer;border-bottom:1px solid var(--border);padding-bottom:10px" onclick="toggleCli('+idx+')">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+      '<div style="font-size:11px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(idx+1)+'. '+c.name+'</div>'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0">'+
+      '<span style="font-size:11px;font-weight:700;color:var(--primary)">'+ff(c.fat)+'</span>'+
+      '<span style="font-size:10px;color:var(--muted)">'+(isExp?'▲':'▼')+'</span>'+
+      '</div></div>'+
+      '<div class="pbar"><div class="pfill g" style="width:'+(c.fat/maxCli*100).toFixed(0)+'%"></div></div>'+
+      '<div style="font-size:10px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap">'+
+      (c.city?'<span>'+c.city+'</span>':'')+
+      '<span>Fat. <strong style="color:var(--primary)">'+ff(c.fat)+'</strong></span>'+
+      mgStr+
+      (c.dev>0?'<span style="color:var(--danger);font-weight:700">Dev '+fk(c.dev)+'</span>':'')+
+      '</div>'+lineChart+catHtml+'</div>';
+  }
+
+  function renderCliList() {
+    var q = cliFiltro.toLowerCase().trim();
+    var filtered = q ? clients.filter(function(c){ return c.name.toLowerCase().indexOf(q)>=0; }) : clients;
+    var info = q
+      ? '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+filtered.length+' resultado(s) para "<strong style="color:var(--text)">'+q+'</strong>"</div>'
+      : '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">'+clients.length+' clientes &middot; acumulado 2026</div>';
+    var rows = filtered.map(function(c){ return buildCliRow(c, clients.indexOf(c)); }).join('');
+    document.getElementById('cli-list').innerHTML = info +
+      (rows || '<p style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Nenhum cliente encontrado</p>');
+  }
+
+  document.getElementById('dt-cli').innerHTML =
+    '<div class="card">'+
+    '<div class="ctitle">&#128101; Clientes &mdash; acumulado 2026</div>'+
+    '<div style="margin-bottom:12px">'+
+    '<input id="cli-search" type="text" placeholder="&#128269;  Buscar por nome do cliente..."'+
+    ' style="width:100%;padding:10px 12px;background:var(--raised);border:1px solid var(--border);'+
+    'border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;outline:none"'+
+    ' oninput="cliSearch(this.value)">'+
+    '</div><div id="cli-list"></div></div>';
+
+  window.cliSearch = function(v) { cliFiltro=v; cliExpanded=null; renderCliList(); };
+  window.toggleCli = function(i) { cliExpanded = cliExpanded===i ? null : i; renderCliList(); };
+  renderCliList();
+};
 
 /* ═══════════════════════════════════════════════════
    INIT
